@@ -1,0 +1,12 @@
+variable "name_prefix" { type = string }
+variable "aws_region" { type = string }
+variable "enable_guardduty" { type = bool }
+variable "enable_security_hub" { type = bool }
+variable "enable_aws_config" { type = bool }
+variable "enable_budget" { type = bool }
+variable "budget_alert_email" { type = string }
+variable "budget_limit_usd" { type = number }
+variable "alert_email" { type = string }
+variable "audit_log_retention_days" { type = number }
+variable "health_log_groups" { type = map(string) }
+variable "instance_ids" { type = map(string) }

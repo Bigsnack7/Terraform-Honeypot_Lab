@@ -1,0 +1,100 @@
+name: Apply Reviewed Terraform Destroy Plan
+
+on:
+  workflow_dispatch:
+    inputs:
+      plan_run_id:
+        description: Run ID of the successful Terraform Destroy Plan workflow whose artifact you reviewed
+        required: true
+        type: string
+      confirmation:
+        description: Type DESTROY only after reviewing that exact destroy plan
+        required: true
+        type: string
+      aws_region:
+        description: Must match the reviewed plan region
+        required: true
+        type: string
+        default: us-east-1
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+  TF_STATE_REGION: ${{ vars.TF_STATE_REGION }}
+  AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
+
+jobs:
+  destroy:
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'DESTROY'
+    runs-on: ubuntu-latest
+    environment: terraform-destroy
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: terraform-destroy-plan-${{ inputs.plan_run_id }}
+          path: reviewed-plan
+          run-id: ${{ inputs.plan_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Verify the reviewed destroy plan provenance
+        env:
+          PLAN_RUN_ID: ${{ inputs.plan_run_id }}
+          PLAN_REGION: ${{ inputs.aws_region }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${PLAN_RUN_ID}" > run.json
+          python - <<'PY'
+          import json, os, re, sys
+          from pathlib import Path
+          metadata = json.loads(Path("reviewed-plan/destroy-plan-metadata.json").read_text(encoding="utf-8"))
+          run = json.loads(Path("run.json").read_text(encoding="utf-8"))
+          checks = {
+              "plan branch": metadata.get("branch") == "main",
+              "plan commit": metadata.get("commit_sha") == os.environ["GITHUB_SHA"],
+              "plan run id": metadata.get("run_id") == os.environ["PLAN_RUN_ID"],
+              "plan region": metadata.get("aws_region") == os.environ["PLAN_REGION"],
+              "state bucket": metadata.get("state_bucket") == os.environ["TF_STATE_BUCKET"],
+              "state region": metadata.get("state_region") == os.environ["TF_STATE_REGION"],
+              "state key": metadata.get("state_key") == "honeypot-soc/dev.tfstate",
+              "source workflow": run.get("path") == ".github/workflows/terraform-destroy.yml",
+              "source run": run.get("head_branch") == "main" and run.get("event") == "workflow_dispatch" and run.get("conclusion") == "success",
+          }
+          failed = [name for name, passed in checks.items() if not passed]
+          if failed:
+              print("Destroy approval rejected; mismatched provenance: " + ", ".join(failed), file=sys.stderr)
+              raise SystemExit(1)
+          if not re.fullmatch(r"[0-9a-f]{40}", metadata.get("commit_sha", "")):
+              raise SystemExit("Plan commit SHA is invalid.")
+          print("The approved destroy plan matches this commit, region, backend, and successful plan run.")
+          PY
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_APPLY_ROLE_ARN }}
+          aws-region: ${{ inputs.aws_region }}
+          role-session-name: terraform-destroy-${{ github.run_id }}
+
+      - name: Initialize remote state
+        run: >-
+          terraform -chdir=terraform init -input=false
+          -backend-config="bucket=${TF_STATE_BUCKET}"
+          -backend-config="key=honeypot-soc/dev.tfstate"
+          -backend-config="region=${TF_STATE_REGION}"
+          -backend-config="encrypt=true"
+          -backend-config="use_lockfile=true"
+
+      - name: Apply the exact reviewed destroy plan
+        run: terraform -chdir=terraform apply -input=false -auto-approve ../reviewed-plan/tfplan

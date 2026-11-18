@@ -1,286 +1,340 @@
-# Honeypot-SOC_Lab.V2
+# Honeypot SOC Lab V2
 
-![Azure](https://img.shields.io/badge/Azure-Sentinel-0078D4?logo=microsoftazure&logoColor=white)
-![IaC](https://img.shields.io/badge/IaC-Bicep-blue)
-![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
-![Detections](https://img.shields.io/badge/Detections-10%20analytics%20rules-green)
-![MITRE](https://img.shields.io/badge/MITRE%20ATT%26CK-mapped-red)
+**Cloud Security | AWS | Terraform | Infrastructure as Code | SOC Engineering | Detection Engineering**
 
-An end-to-end, **infrastructure-as-code** Azure honeypot and SOC detection lab. Three decoy systems are exposed to the public internet, their telemetry flows into **Microsoft Sentinel**, and a layered detection and response pipeline turns raw attacker activity into enriched, MITRE-mapped incidents. Nothing is deployed by hand in the Azure portal: every component is defined in Bicep and shipped by GitHub Actions on each push to `main`.
+A practical cloud security lab built with AWS-native services and Terraform. It
+provisions isolated, optional honeypots and the supporting logging, audit, and
+investigation infrastructure used to study suspicious activity.
 
-> **Why this project exists:** to practice the full SOC engineering loop (collect, detect, enrich, respond, and monitor the pipeline itself) against *real* internet attackers rather than simulated data.
+> **Deployment status:** The infrastructure has passed static repository validation;
+> it has not been deployed. No account-specific AWS plan or apply has been performed,
+> and no live honeypot behavior or production telemetry has been verified.
+>
+> **Cost and exposure warning:** AWS pricing and Free Tier eligibility depend on your
+> account, offer, region, and usage. EC2, EBS, public IPv4, log ingestion and storage,
+> S3, alarms, budgets, data transfer, and optional security services can incur charges.
+> AWS Budget notifications are alerts, not spending limits. Review the exact plan,
+> public exposure, and cost implications before applying it.
 
----
+## Project overview
 
-## Table of contents
+The lab demonstrates a security monitoring workflow built around three optional
+decoys:
 
-1. [Highlights](#highlights)
-2. [Architecture](#architecture)
-3. [Decoys](#decoys)
-4. [Detection coverage](#detection-coverage)
-5. [Response and automation](#response-and-automation)
-6. [Dashboards and hunting](#dashboards-and-hunting)
-7. [Security design decisions](#security-design-decisions)
-8. [Repository structure](#repository-structure)
-9. [Deployment](#deployment)
-10. [Cost controls](#cost-controls)
-11. [Lessons learned](#lessons-learned)
-12. [Known limitations](#known-limitations)
-13. [Roadmap](#roadmap)
-14. [Author](#author)
+- Cowrie SSH honeypot on Linux.
+- Flask web application decoy with honeytoken paths.
+- Windows Server RDP honeypot with host and PowerShell telemetry.
 
----
+Each decoy has an independent network environment. CloudWatch centralizes selected
+host and application logs, while CloudTrail records AWS management events. Saved
+CloudWatch Logs Insights queries support analyst-led investigation; they are not
+scheduled detections or production alert rules.
 
-## Highlights
+Honeypots are disabled by default. Listener ingress requires explicitly configured
+CIDRs, and there are no public SSH or RDP management rules. Systems Manager is the
+intended management path when enabled.
 
-- **100% IaC:** networking, VMs, Data Collection Rules, Sentinel onboarding, analytics rules, workbook, and playbook are all Bicep.
-- **GitOps deployment:** a push to `main` touching `infra/` triggers the GitHub Actions pipeline.
-- **Three decoy types:** Windows RDP/SMB, Linux SSH (Cowrie), and a web decoy with honeytoken paths.
-- **10 native Sentinel analytics rules** (scheduled query rules, not legacy Azure Monitor alerts) mapped to MITRE ATT&CK, covering brute force, discovery, persistence, execution, defense evasion, and post-exploitation.
-- **Pipeline health monitoring:** rules that alert when a decoy stops sending logs, independent of attack logic.
-- **SOAR playbook:** a Logic App with managed-identity authentication enriches and comments on every new incident.
-- **Contained by design:** decoys sit in isolated VNets with deny-by-default outbound rules, so a compromised decoy cannot be used to attack anything else.
-- **Documented failure:** a real 3-day silent outage is written up as a post-incident review, and the detections that came out of it are in the repo.
+## Technology stack
 
----
+| Area | Technologies |
+|---|---|
+| Infrastructure as code | Terraform 1.10+, AWS provider |
+| Networking and compute | Amazon VPC, security groups, Amazon EC2 |
+| Decoys | Cowrie, Flask, optional Windows Server |
+| Logging and audit | Amazon CloudWatch Logs, CloudWatch alarms, AWS CloudTrail, Amazon S3 |
+| Detection investigation | CloudWatch Logs Insights saved queries |
+| Identity and administration | IAM roles and instance profiles, AWS Systems Manager |
+| Optional security services | Amazon GuardDuty, AWS Security Hub, AWS Config |
+| Automation | GitHub Actions, AWS OIDC, Python plan guard |
 
-## Architecture
+## AWS architecture
 
 ```mermaid
 flowchart LR
-    Internet((Internet attackers))
-
-    subgraph VNET1["vnet-honeypot-soc / nsg-honeypot-soc"]
-        WIN["vm-win-decoy<br/>RDP 3389, SMB 445<br/>Sysmon"]
-        LNX["vm-linux-decoy<br/>Cowrie SSH honeypot"]
+  Internet((Internet))
+  subgraph AWS["AWS account and selected region"]
+    subgraph Linux["Isolated Linux VPC"]
+      Cowrie["Optional EC2<br/>Cowrie SSH decoy :22"]
     end
-
-    subgraph VNET2["vnet-web-decoy / nsg-web-decoy"]
-        WEB["vm-web-decoy<br/>Honeytoken web paths"]
+    subgraph WebVPC["Isolated web VPC"]
+      Web["Optional EC2<br/>Flask decoy :80"]
     end
-
-    subgraph DCR["Data Collection Rules"]
-        D1[dcr-windows-logs]
-        D2[dcr-cowrie-logs]
-        D3[dcr-webdecoy-logs]
+    subgraph WindowsVPC["Isolated Windows VPC"]
+      Windows["Optional EC2<br/>RDP decoy :3389<br/>SMB :445 optional"]
     end
-
-    LAW[("law-honeypot-soc<br/>Log Analytics<br/>1 GB/day cap")]
-    SENT["Microsoft Sentinel<br/>10 analytics rules"]
-    WB["Sentinel workbook<br/>MITRE heat map, geo map"]
-    AG["Action groups<br/>ag-honeypot-alerts, ag-honeypot-soc"]
-    LA["Logic App playbook<br/>playbook-incident-enrichment-notify"]
-
-    Internet --> WIN
-    Internet --> LNX
-    Internet --> WEB
-    WIN --> D1 --> LAW
-    LNX --> D2 --> LAW
-    WEB --> D3 --> LAW
-    LAW --> SENT
-    SENT --> WB
-    SENT --> AG
-    SENT --> LA
+    Logs[("CloudWatch Logs<br/>7-day default retention")]
+    Queries["Saved Logs Insights queries"]
+    Alarms["Heartbeat and EC2 status alarms"]
+    Trail["CloudTrail management events"]
+    Audit[("Private S3 audit bucket")]
+    Budget["AWS Budget notifications"]
+    Optional["Optional GuardDuty<br/>Security Hub / Config"]
+  end
+  Internet --> Cowrie
+  Internet --> Web
+  Internet --> Windows
+  Cowrie --> Logs
+  Web --> Logs
+  Windows --> Logs
+  Logs --> Queries
+  Logs --> Alarms
+  Trail --> Audit
+  Optional --> Alarms
 ```
 
-A full Azure resource view of the deployed resource group is in [`docs/images/rg-honeypot-soc-lab.png`](docs/images/rg-honeypot-soc-lab.png).
+Linux, web, and Windows decoys have separate VPCs, subnets, and security groups, with
+no peering between them. The design has no NAT Gateway or load balancer. Listener
+rules are created only for enabled decoys and explicitly configured
+`honeypot_ingress_cidrs`; the default list is empty. Enabled instances receive public
+IPv4 addresses, so the configured CIDRs control which sources can reach the listener
+ports.
 
-### Data flow
+Instance security-group egress is limited to TCP 443, but destinations are not
+restricted to AWS endpoints. Arbitrary HTTPS egress remains a containment trade-off.
+No SSH/RDP management ingress is configured; Systems Manager is intended for
+administration when enabled.
 
-1. Attackers hit the decoys; each decoy generates host and application telemetry.
-2. **Data Collection Rules** (one per decoy type) route logs to the Log Analytics workspace.
-3. **Sentinel analytics rules** run KQL on a schedule and raise incidents with MITRE tactics, techniques, and entity mappings (IP, host, account).
-4. **Action groups** send email notifications; the **playbook** enriches each new incident and adds a comment.
-5. **Pipeline-health rules** watch the logs themselves, so a silent decoy is itself an alert.
-
----
-
-## Decoys
-
-| Decoy | Exposure | Telemetry | What it catches |
-|---|---|---|---|
-| **Windows** (`vm-win-decoy`) | RDP 3389, SMB 445 | Security log, Sysmon (process creation, network connections, file creation) | RDP brute force, post-logon discovery, persistence, PowerShell abuse, log clearing |
-| **Linux** (`vm-linux-decoy`) | SSH 22 | Cowrie JSON logs | SSH brute force, shell interaction, command execution, captured payloads |
-| **Web** (`vm-web-decoy`) | HTTP 80 | Web access logs | Reconnaissance and scanning against honeytoken paths (`/wp-login.php`, `.env`, `/admin`) |
-
----
-
-## Detection coverage
-
-All rules are native Sentinel scheduled analytics rules defined in Bicep, with MITRE mapping and entity correlation.
-
-| Rule | Source | Tactic | Technique | Trigger |
-|---|---|---|---|---|
-| `cowrie-bruteforce-rule` | Cowrie | Credential Access | T1110 | 6+ failed logins / 24h |
-| `cowrie-command-execution-rule` | Cowrie | Execution | T1059 | Commands run in a honeypot shell session |
-| `cowrie-post-exploit-sequences-rule` | Cowrie | Multiple | Sequence-based | Chained post-login behavior in one session |
-| `windows-bruteforce-rule` | Windows Security | Credential Access | T1110 | 5+ failed logons (4625) / 5 min |
-| `windows-process-creation-rule` | Sysmon | Execution | T1059 | Suspicious process creation (Sysmon Event 1) |
-| `powershell-suspicious-commands-rule` | Sysmon / PowerShell | Execution | T1059.001 | Suspicious PowerShell command lines |
-| `windows-discovery-commands-rule` | Sysmon | Discovery | T1082 / T1087 | Enumeration commands (`whoami`, `net`, `systeminfo`, ...) |
-| `windows-persistence-attempts-rule` | Sysmon | Persistence | T1053 / T1547 | Scheduled tasks, run keys, new services |
-| `event-log-clearing-rule` | Windows Security | Defense Evasion | T1070.001 | Security or System log cleared |
-| Web path scanning | Web decoy | Reconnaissance | T1595 | 3+ honeytoken path probes / 10 min |
-
-### Pipeline health
-
-| Rule | Purpose | Trigger |
+| Component | Purpose | Default |
 |---|---|---|
-| `cowrie-pipeline-silent-rule` | Detects a silent Cowrie pipeline | No data in 30+ min |
-| Web decoy pipeline silence | Detects a silent web decoy | No data in 30+ min |
+| Linux EC2 | Cowrie SSH decoy and Cowrie JSON telemetry | Disabled |
+| Web EC2 | Flask decoy with honeytoken paths and JSON access logs | Disabled |
+| Windows EC2 | RDP decoy with Windows, Sysmon, and PowerShell telemetry | Disabled |
+| CloudWatch Logs | Centralized application, host, and health logs | 7-day retention |
+| CloudTrail and S3 | Management-event audit trail and audit-object storage | Enabled |
+| GuardDuty, Security Hub, AWS Config | Optional security findings/configuration recording | Disabled |
+| SMB listener | Optional Windows TCP 445 decoy exposure | Disabled |
+| AWS Budget | Monthly spending notifications | Enabled; USD 5 threshold |
 
-Detection logic, tuning notes, and YAML definitions live in [`detections/`](detections/).
+## Honeypot components and network security
 
----
+### Linux SSH honeypot
 
-## Response and automation
+The Linux component runs Cowrie and forwards its JSON event log, host logs, and a
+service-health heartbeat to CloudWatch Logs. Cowrie listens on TCP 22 as a decoy; it
+is not an SSH administration service.
 
-- **Action groups** (`ag-honeypot-alerts`, `ag-honeypot-soc`) deliver email notifications for detections and incidents.
-- **SOAR playbook** (`playbook-incident-enrichment-notify`): a Logic App triggered by new Sentinel incidents. It authenticates with a **system-assigned managed identity** through the `azuresentinel-connection` API connection, enriches the incident, and posts a comment. No stored credentials.
-- **Automation rule** attaches the playbook to every new incident.
+### Web application honeypot
 
----
+The Flask decoy exposes HTTP on TCP 80 when enabled. Its routes include common
+WordPress, `.env`, and admin probes, and it records JSON request events and honeytoken
+indicators. Form logging records submitted field names and a credential-submission
+flag, not raw password values.
 
-## Dashboards and hunting
+### Windows RDP honeypot
 
-- **Sentinel workbook:** MITRE technique heat map, attack geography map, and top-attacker breakdowns.
-- **Hunting queries** ([`Hunting_queries/`](Hunting_queries/)): KQL for manual threat hunting across all three decoys.
+The optional Windows Server component exposes the RDP decoy listener only when
+enabled and allowed by explicit CIDRs. SMB remains separately opt-in. The Windows
+instance is disabled by default and can incur higher compute and licensing costs.
 
-<!-- Add screenshots here: workbook overview, an incident with entities, the playbook run history -->
-<!-- ![Workbook](docs/images/workbook.png) -->
+For every decoy, public listener exposure is intentional and controlled by the
+configured ingress CIDRs. Avoid broad CIDRs unless Internet-wide honeypot exposure is
+deliberate. Internet exposure can result in host compromise, outbound abuse, log
+ingestion, and data-transfer charges.
 
----
+## Detection engineering
 
-## Security design decisions
+Nine version-controlled CloudWatch Logs Insights query definitions support focused,
+manual investigation of decoy activity. Terraform saves the query definitions; it
+does not schedule them or create per-query incidents. Analysts run them in CloudWatch
+Logs Insights over a selected time range.
 
-| Decision | Reasoning |
-|---|---|
-| Isolated VNets, no peering | A compromised decoy has no network path to anything else. |
-| NSGs allow only required inbound ports (3389, 445, 22, 80) | Minimal, intentional exposure. |
-| Deny-by-default outbound internet | Decoys can reach Azure Monitor, Azure AD, Storage, and ARM only, so they cannot be used for outbound attacks. |
-| Native Sentinel analytics rules, not legacy Azure Monitor alerts | Proper incidents, MITRE mapping, and entity correlation. |
-| Managed identity for the playbook | No secrets to leak or rotate. |
-| Manual role assignment after first deploy | See below. |
-| Secrets only in GitHub Actions secrets | Nothing sensitive in the repo. |
+| Query | Log source and format | Investigation focus |
+|---|---|---|
+| [`cowrie-ssh-brute-force.sql`](detections/cloudwatch-logs-insights/cowrie-ssh-brute-force.sql) | Cowrie JSON | Failed SSH logins grouped by source |
+| [`cowrie-command-execution.sql`](detections/cloudwatch-logs-insights/cowrie-command-execution.sql) | Cowrie JSON | Commands entered in Cowrie shell sessions |
+| [`cowrie-post-exploitation.sql`](detections/cloudwatch-logs-insights/cowrie-post-exploitation.sql) | Cowrie JSON | Download/execute, persistence, evasion, and credential-file command patterns |
+| [`web-path-scanning.sql`](detections/cloudwatch-logs-insights/web-path-scanning.sql) | Flask access JSON | Repeated honeytoken/404 path probes |
+| [`windows-rdp-brute-force.sql`](detections/cloudwatch-logs-insights/windows-rdp-brute-force.sql) | Windows Security event XML | Failed logons with a parsed source IP |
+| [`windows-suspicious-powershell.sql`](detections/cloudwatch-logs-insights/windows-suspicious-powershell.sql) | PowerShell and Sysmon event XML | Suspicious PowerShell and evasion-related strings |
+| [`windows-privilege-escalation.sql`](detections/cloudwatch-logs-insights/windows-privilege-escalation.sql) | Windows Security/System event XML | Special privileges, service installation, and scheduled-task indicators |
+| [`windows-event-log-clearing.sql`](detections/cloudwatch-logs-insights/windows-event-log-clearing.sql) | Windows Security/System event XML | Event-log clearing records and command indicators |
+| [`windows-admin-activity.sql`](detections/cloudwatch-logs-insights/windows-admin-activity.sql) | Windows Security event XML | Privileged logons, account/group changes, lockouts, and audit-policy changes |
 
-### Why one step is manual
+The Cowrie and web queries expect JSON fields emitted by their respective
+applications. Windows queries inspect XML event records in CloudWatch Agent log
+messages. The query definitions and configured event sources are consistent at the
+repository level, but Windows XML parsing and all detection behavior require runtime
+validation against actual CloudWatch samples. No live detection results are claimed.
 
-The playbook's managed identity needs the **Microsoft Sentinel Responder** role. This is deliberately a one-time human step, because giving the CI/CD identity permission to create role assignments is a much broader privilege than this pipeline should hold (least privilege).
+The [query guide](detections/cloudwatch-logs-insights/README.md) describes the query
+set and its limitations. Restrict access to Cowrie logs because attempted
+credentials may be recorded, and keep retention short.
 
-```bash
-az role assignment create \
-  --assignee-object-id <playbook-managed-identity-principal-id> \
-  --assignee-principal-type ServicePrincipal \
-  --role "Microsoft Sentinel Responder" \
-  -g rg-honeypot-soc-lab
-```
+## Windows security telemetry and CloudWatch Agent integrity
 
----
+When enabled, Windows configuration includes:
 
-## Repository structure
+- Windows Security and System event collection.
+- Sysmon process, network, file, DNS, and selected registry telemetry.
+- PowerShell script-block logging.
+- CloudWatch Agent forwarding for Windows events and service-health records.
+
+The CloudWatch Agent MSI is pinned to version **1.300074.1b2005**. Bootstrap verifies
+the expected SHA-256
+`3891c26f477cc47cf1b3965b18ffb25532b67e4534b60f692cb6605b6bee1577` before
+installation. The MSI's Authenticode signature was reported valid, with signer
+**Amazon Web Services, Inc.** This package verification is not evidence that a
+Windows instance has been deployed. Windows remains disabled by default.
+
+## Terraform modular infrastructure
 
 ```text
-.
-├── infra/               # Bicep: networking, VMs, DCRs, Sentinel, analytics rules, workbook, playbook
-├── detections/          # Detection logic documentation and YAML definitions
-├── Hunting_queries/     # KQL queries for proactive threat hunting
-├── scripts/             # Remediation and recovery scripts for decoy VMs
-├── docs/                # Architecture images, incident reports
-└── .github/workflows/   # CI/CD: deploys infra/ on every push to main
+terraform/
+  bootstrap-state/       # Separate S3 backend bucket bootstrap
+  environments/dev/      # Development composition and example variables
+  modules/
+    networking/          # Isolated VPCs, routes, security groups
+    iam/                 # EC2 instance profile and log-write permissions
+    linux-honeypot/      # Cowrie EC2 component
+    web-honeypot/        # Flask decoy EC2 component
+    windows-honeypot/    # Windows EC2 and telemetry configuration
+    monitoring/          # CloudWatch log groups and saved queries
+    security/            # CloudTrail, budget, alarms, optional security services
 ```
 
-Each folder has its own README with more detail.
+Environment variables control honeypot exposure and optional services. Resource tags
+identify the project, environment, and security-telemetry classification. The EC2 role
+grants CloudWatch log-delivery permissions for configured log groups. When Systems
+Manager is enabled, the instance profile attaches the AWS-managed
+`AmazonSSMManagedInstanceCore` policy. GitHub deployment roles and their policies are
+configured separately and should be reviewed for least privilege.
 
----
+## Terraform remote state security
 
-## Deployment
+The S3 state bucket is created by the separate `terraform/bootstrap-state/` stack.
+Its configuration enables server-side encryption, versioning, S3 public-access
+blocking, a TLS-only bucket policy, and native S3 state locking (`use_lockfile`).
+`prevent_destroy` protects the bucket from Terraform destruction, and lab teardown
+does not include it. Store the bootstrap's local state securely until the remote
+backend is configured; never commit state or generated backend credentials/config.
 
-### Prerequisites
+## GitHub Actions CI/CD and AWS OIDC
 
-- An Azure subscription (a free trial works; see [Cost controls](#cost-controls))
-- A GitHub repository with Actions enabled
-- Azure CLI installed locally for the one-time role assignment
-- An SSH key pair for the Linux decoy
+The Terraform workflows use GitHub Actions OIDC for short-lived AWS credentials,
+not long-lived AWS access keys:
 
-### 1. Configure GitHub secrets
-
-| Secret | Description |
+| Workflow | Purpose |
 |---|---|
-| `AZURE_CREDENTIALS` | Service principal credentials used by the Azure login action |
-| `AZURE_SUBSCRIPTION_ID` | Target Azure subscription |
-| `VM_ADMIN_PASSWORD` | Windows decoy admin password |
-| `VM_SSH_PUBLIC_KEY` | SSH public key for the Linux decoy |
-| `ALERT_EMAIL` | Address for detection and incident notifications |
+| [`terraform-ci.yml`](.github/workflows/terraform-ci.yml) | Formatting, backend-free initialization, validation, and plan-guard tests |
+| [`terraform-plan-apply.yml`](.github/workflows/terraform-plan-apply.yml) | Creates a plan artifact for review; does not apply |
+| [`terraform-apply.yml`](.github/workflows/terraform-apply.yml) | Applies the exact saved plan after confirmation and provenance checks |
+| [`terraform-destroy.yml`](.github/workflows/terraform-destroy.yml) | Creates a separate destroy plan for review |
+| [`terraform-destroy-apply.yml`](.github/workflows/terraform-destroy-apply.yml) | Applies the reviewed destroy plan after confirmation and provenance checks |
 
-### 2. Deploy
+Normal apply plans are guarded against resource deletions and replacements. Destruction
+uses a separate plan/apply flow. GitHub environment reviewers, branch restrictions,
+AWS OIDC trust policies, and appropriately scoped plan/apply IAM permissions must be
+configured before using the workflows. These external settings have not been verified
+by repository validation.
 
-Push a change under `infra/` to `main`. The workflow in `.github/workflows/` validates and deploys the Bicep templates to `rg-honeypot-soc-lab`.
+## Cost management
 
-### 3. Post-deployment (one time)
+Cost-conscious defaults include disabled honeypots, disabled GuardDuty, Security Hub,
+and AWS Config, no NAT Gateway or load balancer, and configurable CloudWatch retention
+with a seven-day default. The AWS Budget is configured with a USD 5 monthly notification
+threshold.
 
-Run the role assignment command from [Security design decisions](#why-one-step-is-manual).
+Budget alerts do **not** cap spending or automatically stop resources. EC2 shutdown
+does not remove EBS storage, snapshots, S3 objects, CloudWatch Logs, or every public
+IPv4 charge. Estimate the chosen region, run time, storage, traffic, logging, and
+optional service use before deployment. Review a destroy plan before teardown and
+check for residual billable resources afterward.
 
-### 4. Verify
+## Validation and testing
 
-- Decoy VMs are running and reporting heartbeats in Log Analytics.
-- Analytics rules are enabled in Sentinel.
-- The workbook shows incoming data within a few hours of exposure.
+Repository-level static checks have passed:
 
-### Teardown
+- Terraform formatting and validation for the main stack.
+- Terraform formatting and validation for the state-bootstrap configuration.
+- Terraform initialization with the backend disabled.
+- Both plan-guard unit tests.
+- YAML parsing of six GitHub Actions workflow files at the time of validation.
+- `git diff --check`.
 
-```bash
-az group delete -n rg-honeypot-soc-lab --yes --no-wait
+These checks do not deploy infrastructure, authenticate to AWS, validate an
+account-specific plan, or establish that log collection and detections work at
+runtime. No AWS infrastructure has been deployed, no AWS apply has been performed,
+and no account-specific AWS plan has been verified. No live honeypot behavior or
+production telemetry has been tested. Detection queries still require runtime
+validation against actual CloudWatch samples.
+
+## Setup and deployment
+
+Prerequisites include Terraform 1.10+, an AWS account and region, short-lived AWS
+credentials for local operations, a unique S3 state bucket name, and a notification
+email for the default budget.
+
+### 1. Bootstrap remote state
+
+```powershell
+Set-Location terraform\bootstrap-state
+Copy-Item terraform.tfvars.example terraform.tfvars
+# Set a globally unique state bucket name and region.
+terraform init
+terraform fmt -check -recursive
+terraform validate
+terraform plan -out=bootstrap.tfplan
+terraform show -no-color bootstrap.tfplan
+# Apply only after reviewing the exact bootstrap plan:
+terraform apply bootstrap.tfplan
 ```
 
----
+Keep the bootstrap local state in a protected location. The state bucket is protected
+from destruction and is not part of lab teardown.
 
-## Cost controls
+### 2. Configure and review the lab plan
 
-- Log Analytics **daily ingestion cap: 1 GB/day**
-- Small VM SKUs for all decoys
-- Designed to run on an Azure free trial
-- Teardown is a single command, since everything lives in one resource group
+```powershell
+Set-Location ..\..
+Copy-Item backend.hcl.example backend.hcl
+Copy-Item environments\dev\terraform.tfvars.example environments\dev\terraform.tfvars
+# Set the state bucket/region and budget_alert_email.
+# Enable only the intended honeypot and set explicit listener CIDRs.
+terraform init -backend-config=backend.hcl
+terraform fmt -check -recursive
+terraform validate
+terraform plan -var-file=environments\dev\terraform.tfvars -out=tfplan
+terraform show -no-color tfplan
+```
 
----
+Review the full plan, exposure, and cost before considering an apply. Apply only the
+exact reviewed plan; the GitHub process also requires its reviewed plan artifact,
+provenance checks, explicit confirmation, and protected-environment approval.
 
-## Lessons learned
+## Teardown
 
-A real **3-day silent outage** (the web decoy crash-looped and no alert fired) is documented in [`INCIDENT_2026-09-21_provisioning_failures.md`](INCIDENT_2026-09-21_provisioning_failures.md).
+Create and review a destroy plan before applying it:
 
-| What happened | What changed |
-|---|---|
-| Web decoy failed repeatedly for 3 days with no alert | Added dedicated pipeline-silence rules per decoy pipeline |
-| Detection logic alone could not see a *missing* data source | Health monitoring is now treated as a first-class detection category |
-| Recovery was manual and slow | Added remediation and recovery scripts in `scripts/` |
+```powershell
+terraform plan -destroy -var-file=environments\dev\terraform.tfvars -out=tfplan
+terraform show -no-color tfplan
+# Apply only after reviewing the exact destroy plan:
+terraform apply tfplan
+```
 
----
+Preserve required audit data and do not destroy the separately managed state bucket.
+After teardown, inspect EBS volumes and snapshots, S3 audit data, CloudWatch Logs,
+public IPv4 usage, and AWS Billing.
 
-## Known limitations
+Do not commit generated `.tfvars`, backend configuration containing private details,
+state files, plans, credentials, or account-specific sensitive information.
 
-- **Threat Intelligence connector is not deployed.** The Microsoft Threat Intelligence connector is excluded from the Bicep templates because it requires tenant verification that is not available on the trial tenant used for this lab. IP enrichment currently comes from the playbook and KQL rather than the native TI feed.
-- Incident-response report templates are not yet written.
-- Exposed honeypots receive real attacks; this lab is for education and should not share a subscription with production workloads.
+## Project objectives and skills demonstrated
 
----
-
-## Roadmap
-
-- [x] IaC networking, decoys, and logging pipeline
-- [x] Sentinel onboarding with native analytics rules and MITRE mapping
-- [x] Workbook (MITRE heat map, geo map, top attackers)
-- [x] SOAR playbook and automation rule
-- [x] Pipeline-health detections
-- [ ] Incident-response report templates
-- [ ] Native Threat Intelligence connector (pending a tenant that supports it)
-- [ ] Integration with HEX WATCH (see below)
-
----
+- Design isolated, intentionally exposed decoy environments in AWS.
+- Provision and configure infrastructure through reusable Terraform modules.
+- Apply IAM roles, instance profiles, and short-lived CI/CD authentication patterns.
+- Collect host and application telemetry centrally and bound log retention.
+- Translate investigation goals into version-controlled CloudWatch Logs Insights
+  queries.
+- Protect Terraform state and separate plan review from apply and teardown.
+- Evaluate cost, operational risk, public exposure, and evidence requirements.
 
 ## Author
 
-**Oludemi Joshua**: Cloud Security Analyst | Blue Team | SOC Analyst | Security Automation
+**Oludemi Joshua**
 
-- GitHub: [Bigsnack7](https://github.com/Bigsnack7)
-- LinkedIn: [oludemi-joshua](https://www.linkedin.com/in/oludemi-joshua-b6b59141b)
+Cybersecurity | Cloud Security | Blue Team | Security Automation
 
-Currently building **HEX WATCH**, an AI-powered SOC platform, developed incrementally as I grow my security engineering and software development skills.
+Building practical security solutions across cloud infrastructure, identity,
+monitoring, and security engineering.

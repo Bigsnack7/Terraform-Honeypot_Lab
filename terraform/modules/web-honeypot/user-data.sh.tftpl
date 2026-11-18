@@ -1,0 +1,169 @@
+#!/bin/bash
+set -Eeuo pipefail
+exec > >(tee -a /var/log/honeypot-bootstrap.log | logger -t honeypot-bootstrap -s 2>/dev/console) 2>&1
+
+dnf install -y amazon-cloudwatch-agent curl python3 python3-pip
+useradd --system --create-home --home-dir /opt/webdecoy --shell /sbin/nologin webdecoy
+python3 -m venv /opt/webdecoy/venv
+/opt/webdecoy/venv/bin/pip install --disable-pip-version-check "Flask==${flask_version}"
+install -d -o webdecoy -g webdecoy /opt/webdecoy/app /var/log/webdecoy /var/log/honeypot
+
+cat >/opt/webdecoy/app/decoy.py <<'PYTHON'
+from datetime import datetime, timezone
+import json
+from flask import Flask, request
+
+app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 4096
+LOG_PATH = "/var/log/webdecoy/access.json"
+
+def log_event(extra=None):
+    fields = sorted(request.form.keys()) if request.form else []
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "src_ip": request.remote_addr,
+        "method": request.method,
+        "path": request.path,
+        "user_agent": request.headers.get("User-Agent", "")[:512],
+        "form_fields": fields,
+        "credential_submission": any(key.lower() in {"password", "pwd", "pass"} for key in fields),
+    }
+    if extra:
+        entry.update(extra)
+    with open(LOG_PATH, "a", encoding="utf-8") as log_file:
+        log_file.write(json.dumps(entry, separators=(",", ":")) + "\n")
+
+@app.get("/healthz")
+def health():
+    return "ok", 200
+
+@app.get("/")
+def home():
+    log_event()
+    return "<h1>It works!</h1><p>Apache2 Default Page</p>", 200
+
+@app.route("/wp-login.php", methods=["GET", "POST"])
+def wp_login():
+    log_event({"honeytoken": "wordpress_admin_probe"})
+    return """<html><body><h2>WordPress Login</h2>
+    <form method="POST">Username: <input name="log"><br>
+    Password: <input type="password" name="pwd"><br><input type="submit"></form>
+    </body></html>""", 200
+
+@app.get("/.env")
+def dotenv():
+    log_event({"honeytoken": "env_file_probe"})
+    return "DB_HOST=localhost\nDB_USER=admin\nDB_PASS=example-only\nAPI_KEY=fake-decoy-value\n", 200
+
+@app.route("/admin", methods=["GET", "POST"])
+def admin():
+    log_event({"honeytoken": "admin_panel_probe"})
+    return """<html><body><h2>Admin Panel</h2>
+    <form method="POST">Username: <input name="username"><br>
+    Password: <input type="password" name="password"><br><input type="submit"></form>
+    </body></html>""", 200
+
+@app.errorhandler(404)
+def not_found(_error):
+    log_event({"honeytoken": "404_probe"})
+    return "<h1>Not Found</h1>", 404
+
+@app.errorhandler(413)
+def request_too_large(_error):
+    log_event({"honeytoken": "oversized_request"})
+    return "Request too large", 413
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=80, use_reloader=False)
+PYTHON
+chown -R webdecoy:webdecoy /opt/webdecoy /var/log/webdecoy
+
+cat >/etc/systemd/system/webdecoy.service <<'UNIT'
+[Unit]
+Description=Flask web application honeypot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=webdecoy
+Group=webdecoy
+WorkingDirectory=/opt/webdecoy/app
+ExecStart=/opt/webdecoy/venv/bin/python /opt/webdecoy/app/decoy.py
+Restart=on-failure
+RestartSec=5
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+cat >/usr/local/sbin/webdecoy-health <<'HEALTH'
+#!/bin/bash
+status="$(systemctl is-active webdecoy 2>/dev/null || true)"
+if [ "$status" = "active" ] && curl -fsS --max-time 3 http://127.0.0.1/healthz >/dev/null; then state=healthy; else state=unhealthy; fi
+printf '{"service":"webdecoy","status":"%s","timestamp":"%s"}\n' "$state" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >>/var/log/honeypot/health.json
+HEALTH
+chmod 0755 /usr/local/sbin/webdecoy-health
+cat >/etc/systemd/system/webdecoy-health.service <<'UNIT'
+[Unit]
+Description=Write web decoy service health heartbeat
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/webdecoy-health
+UNIT
+cat >/etc/systemd/system/webdecoy-health.timer <<'UNIT'
+[Unit]
+Description=Periodic web decoy service health heartbeat
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+cat >/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONFIG'
+{
+  "agent": {
+    "run_as_user": "root"
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/webdecoy/access.json",
+            "log_group_name": "${access_log_group_name}",
+            "log_stream_name": "{instance_id}"
+          },
+          {
+            "file_path": "/var/log/messages",
+            "log_group_name": "${system_log_group_name}",
+            "log_stream_name": "{instance_id}"
+          },
+          {
+            "file_path": "/var/log/honeypot/health.json",
+            "log_group_name": "${health_log_group_name}",
+            "log_stream_name": "{instance_id}"
+          }
+        ]
+      }
+    }
+  }
+}
+CWCONFIG
+
+systemctl daemon-reload
+systemctl enable --now webdecoy webdecoy-health.timer
+/usr/local/sbin/webdecoy-health
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s

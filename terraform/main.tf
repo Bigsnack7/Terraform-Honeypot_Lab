@@ -1,0 +1,31 @@
+module "dev" {
+  source = "./environments/dev"
+
+  aws_region                  = var.aws_region
+  environment                 = var.environment
+  vpc_cidr                    = var.vpc_cidr
+  availability_zone           = var.availability_zone
+  honeypot_ingress_cidrs      = var.honeypot_ingress_cidrs
+  enable_windows_honeypot     = var.enable_windows_honeypot
+  enable_linux_honeypot       = var.enable_linux_honeypot
+  enable_web_honeypot         = var.enable_web_honeypot
+  enable_smb_listener         = var.enable_smb_listener
+  enable_guardduty            = var.enable_guardduty
+  enable_security_hub         = var.enable_security_hub
+  enable_aws_config           = var.enable_aws_config
+  enable_budget               = var.enable_budget
+  budget_alert_email          = var.budget_alert_email
+  budget_limit_usd            = var.budget_limit_usd
+  alert_email                 = var.alert_email
+  log_retention_days          = var.log_retention_days
+  audit_log_retention_days    = var.audit_log_retention_days
+  linux_instance_type         = var.linux_instance_type
+  web_instance_type           = var.web_instance_type
+  windows_instance_type       = var.windows_instance_type
+  cloudwatch_agent_version    = var.cloudwatch_agent_version
+  cloudwatch_agent_msi_sha256 = var.cloudwatch_agent_msi_sha256
+  cowrie_version              = var.cowrie_version
+  flask_version               = var.flask_version
+  enable_ssm_management       = var.enable_ssm_management
+  query_definitions           = local.query_definitions
+}

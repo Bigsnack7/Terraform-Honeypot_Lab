@@ -1,4 +1,0 @@
-SecurityEvent
-| where EventID in (4624, 4625)
-| summarize Events = count() by EventID, LogonType, bin(TimeGenerated, 1h)
-| order by TimeGenerated desc

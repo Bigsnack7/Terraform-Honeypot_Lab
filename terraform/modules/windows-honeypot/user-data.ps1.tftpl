@@ -1,0 +1,95 @@
+<powershell>
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+
+$Root = 'C:\ProgramData\Honeypot'
+New-Item -ItemType Directory -Force -Path $Root | Out-Null
+$SysmonZip = Join-Path $Root 'Sysmon.zip'
+$SysmonDirectory = Join-Path $Root 'Sysmon'
+$SysmonUrl = 'https://download.sysinternals.com/files/Sysmon.zip'
+Invoke-WebRequest -Uri $SysmonUrl -OutFile $SysmonZip
+Expand-Archive -Path $SysmonZip -DestinationPath $SysmonDirectory -Force
+$SysmonBinary = Join-Path $SysmonDirectory 'Sysmon64.exe'
+$Signature = Get-AuthenticodeSignature -FilePath $SysmonBinary
+if ($Signature.Status -ne 'Valid' -or $Signature.SignerCertificate.Subject -notmatch 'Microsoft Corporation') {
+    throw 'Sysmon binary signature validation failed.'
+}
+
+$SysmonConfig = @'
+${sysmon_config}
+'@
+$ConfigPath = Join-Path $Root 'sysmon-config.xml'
+Set-Content -Path $ConfigPath -Value $SysmonConfig -Encoding UTF8
+& $SysmonBinary -accepteula -i $ConfigPath
+if ($LASTEXITCODE -ne 0) {
+    throw "Sysmon installation failed with exit code $LASTEXITCODE"
+}
+
+$ScriptBlockLogging = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging'
+New-Item -Path $ScriptBlockLogging -Force | Out-Null
+New-ItemProperty -Path $ScriptBlockLogging -Name EnableScriptBlockLogging -PropertyType DWord -Value 1 -Force | Out-Null
+$ProcessAudit = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit'
+New-Item -Path $ProcessAudit -Force | Out-Null
+New-ItemProperty -Path $ProcessAudit -Name ProcessCreationIncludeCmdLine_Enabled -PropertyType DWord -Value 1 -Force | Out-Null
+
+$AuditSubcategories = @(
+    'Logon',
+    'Credential Validation',
+    'Process Creation',
+    'Special Logon',
+    'Security System Extension',
+    'User Account Management',
+    'Audit Policy Change'
+)
+foreach ($Subcategory in $AuditSubcategories) {
+    & auditpol.exe /set "/subcategory:$Subcategory" /success:enable /failure:enable
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to configure audit subcategory: $Subcategory"
+    }
+}
+
+$AgentMsi = Join-Path $Root 'amazon-cloudwatch-agent.msi'
+Invoke-WebRequest -Uri 'https://amazoncloudwatch-agent.s3.amazonaws.com/windows/amd64/${cloudwatch_agent_version}/amazon-cloudwatch-agent.msi' -OutFile $AgentMsi
+$ExpectedAgentSha256 = '${cloudwatch_agent_msi_sha256}'
+$ActualAgentSha256 = (Get-FileHash -Path $AgentMsi -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($ActualAgentSha256 -cne $ExpectedAgentSha256) {
+    throw 'CloudWatch Agent MSI SHA-256 verification failed.'
+}
+$Install = Start-Process -FilePath 'msiexec.exe' -ArgumentList @('/i', $AgentMsi, '/qn', '/norestart') -Wait -PassThru
+if ($Install.ExitCode -notin @(0, 3010)) {
+    throw "CloudWatch Agent installation failed with exit code $($Install.ExitCode)"
+}
+
+$AgentConfigPath = 'C:\ProgramData\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent.json'
+$AgentConfigDirectory = Split-Path -Parent $AgentConfigPath
+New-Item -ItemType Directory -Force -Path $AgentConfigDirectory | Out-Null
+$AgentConfig = @'
+${cloudwatch_agent_config}
+'@
+Set-Content -Path $AgentConfigPath -Value $AgentConfig -Encoding UTF8
+
+$HealthScript = @'
+$ErrorActionPreference = 'Stop'
+$SysmonService = Get-Service -Name 'Sysmon64' -ErrorAction SilentlyContinue
+$AgentService = Get-Service -Name 'AmazonCloudWatchAgent' -ErrorAction SilentlyContinue
+$State = if ($SysmonService -and $SysmonService.Status -eq 'Running' -and $AgentService -and $AgentService.Status -eq 'Running') { 'healthy' } else { 'unhealthy' }
+$Event = [ordered]@{
+    service = 'windows-honeypot'
+    status = $State
+    timestamp = [DateTime]::UtcNow.ToString('o')
+} | ConvertTo-Json -Compress
+Add-Content -Path 'C:\ProgramData\Honeypot\health.json' -Value $Event -Encoding UTF8
+'@
+$HealthPath = Join-Path $Root 'write-health.ps1'
+Set-Content -Path $HealthPath -Value $HealthScript -Encoding UTF8
+$Action = New-ScheduledTaskAction -Execute 'PowerShell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$HealthPath`""
+$Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 3650)
+Register-ScheduledTask -TaskName 'HoneypotHealthHeartbeat' -Action $Action -Trigger $Trigger -User 'SYSTEM' -RunLevel Highest -Force | Out-Null
+
+$AgentControl = 'C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1'
+& $AgentControl -a fetch-config -m ec2 -c "file:$AgentConfigPath" -s
+if ($LASTEXITCODE -ne 0) {
+    throw "CloudWatch Agent configuration failed with exit code $LASTEXITCODE"
+}
+& PowerShell.exe -NoProfile -ExecutionPolicy Bypass -File $HealthPath
+</powershell>

@@ -1,0 +1,45 @@
+name: Terraform CI
+
+on:
+  pull_request:
+    paths:
+      - "terraform/**"
+      - "detections/cloudwatch-logs-insights/**"
+      - ".github/workflows/terraform-*.yml"
+  push:
+    branches: [main]
+    paths:
+      - "terraform/**"
+      - "detections/cloudwatch-logs-insights/**"
+      - ".github/workflows/terraform-*.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+
+      - name: Check formatting
+        run: terraform -chdir=terraform fmt -check -recursive
+
+      - name: Initialize without a backend
+        run: terraform -chdir=terraform init -backend=false -input=false
+
+      - name: Validate configuration
+        run: terraform -chdir=terraform validate -no-color
+
+      - name: Initialize state bucket bootstrap without a backend
+        run: terraform -chdir=terraform/bootstrap-state init -backend=false -input=false
+
+      - name: Validate state bucket bootstrap
+        run: terraform -chdir=terraform/bootstrap-state validate -no-color
+
+      - name: Test plan safety guard
+        run: python -m unittest discover -s terraform/tests -v

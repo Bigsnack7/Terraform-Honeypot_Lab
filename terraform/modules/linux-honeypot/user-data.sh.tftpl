@@ -1,0 +1,112 @@
+#!/bin/bash
+set -Eeuo pipefail
+exec > >(tee -a /var/log/honeypot-bootstrap.log | logger -t honeypot-bootstrap -s 2>/dev/console) 2>&1
+
+dnf install -y amazon-cloudwatch-agent gcc git libffi-devel openssl-devel python3 python3-devel
+id cowrie >/dev/null 2>&1 || useradd --system --create-home --home-dir /opt/cowrie --shell /sbin/nologin cowrie
+install -d -o cowrie -g cowrie /opt/cowrie
+python3 -m venv /opt/cowrie/venv
+/opt/cowrie/venv/bin/pip install --disable-pip-version-check "cowrie==${cowrie_version}"
+runuser -u cowrie -- bash -c 'cd /opt/cowrie && /opt/cowrie/venv/bin/cowrie init'
+sed -i 's|^listen_endpoints = .*|listen_endpoints = tcp:22:interface=0.0.0.0|' /opt/cowrie/etc/cowrie.cfg
+
+cat >/etc/systemd/system/cowrie.service <<'UNIT'
+[Unit]
+Description=Cowrie SSH honeypot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+User=cowrie
+Group=cowrie
+WorkingDirectory=/opt/cowrie
+Environment=PATH=/opt/cowrie/venv/bin:/usr/local/bin:/usr/bin:/bin
+PIDFile=/opt/cowrie/var/run/cowrie.pid
+ExecStartPre=/usr/bin/rm -f /opt/cowrie/var/run/cowrie.pid
+ExecStart=/opt/cowrie/venv/bin/cowrie start
+ExecStop=/opt/cowrie/venv/bin/cowrie stop
+Restart=on-failure
+RestartSec=5
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+install -d -m 0755 /var/log/honeypot
+cat >/usr/local/sbin/honeypot-health <<'HEALTH'
+#!/bin/bash
+status="$(systemctl is-active cowrie 2>/dev/null || true)"
+if [ "$status" = "active" ]; then state=healthy; else state=unhealthy; fi
+printf '{"service":"cowrie","status":"%s","timestamp":"%s"}\n' "$state" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >>/var/log/honeypot/health.json
+HEALTH
+chmod 0755 /usr/local/sbin/honeypot-health
+cat >/etc/systemd/system/honeypot-health.service <<'UNIT'
+[Unit]
+Description=Write Cowrie service health heartbeat
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/honeypot-health
+UNIT
+cat >/etc/systemd/system/honeypot-health.timer <<'UNIT'
+[Unit]
+Description=Periodic Cowrie service health heartbeat
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+cat >/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONFIG'
+{
+  "agent": {
+    "run_as_user": "root"
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/opt/cowrie/var/log/cowrie/cowrie.json",
+            "log_group_name": "${cowrie_log_group_name}",
+            "log_stream_name": "{instance_id}"
+          },
+          {
+            "file_path": "/var/log/messages",
+            "log_group_name": "${system_log_group_name}",
+            "log_stream_name": "{instance_id}"
+          },
+          {
+            "file_path": "/var/log/secure",
+            "log_group_name": "${system_log_group_name}",
+            "log_stream_name": "{instance_id}"
+          },
+          {
+            "file_path": "/var/log/honeypot/health.json",
+            "log_group_name": "${health_log_group_name}",
+            "log_stream_name": "{instance_id}"
+          }
+        ]
+      }
+    }
+  }
+}
+CWCONFIG
+
+systemctl daemon-reload
+systemctl enable --now cowrie
+systemctl enable --now honeypot-health.timer
+/usr/local/sbin/honeypot-health
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s

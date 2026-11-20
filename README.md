@@ -4,14 +4,21 @@
 
 ![Terraform](https://img.shields.io/badge/Terraform-1.10%2B-7B42BC?logo=terraform&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-EC2%20%7C%20CloudWatch%20%7C%20CloudTrail-FF9900?logo=amazonaws&logoColor=white)
-![Status](https://img.shields.io/badge/status-statically%20validated%2C%20not%20deployed-lightgrey)
+![Status](https://img.shields.io/badge/status-Linux%20and%20web%20evidence-2ea44f)
 
 `Cloud Security` · `AWS` · `Terraform` · `Infrastructure as Code` · `SOC Engineering` · `Detection Engineering`
 
 > [!WARNING]
-> **Not yet deployed.** The repository has passed static validation only. No AWS
-> plan or apply has been run, and no live honeypot behavior, telemetry, or
-> detection result has been verified.
+> **Deployment and test status:** The operator reports that the Linux Cowrie, web,
+> and Windows decoys are deployed and enabled. A supplied
+> [EC2 screenshot](docs/deployment-evidence/ec2-instances-running.png) shows three
+> instances Running with 3/3 status checks; the Name column is truncated. In a
+> controlled Linux SSH session, Cowrie events were observed in
+> `/honeypot/dev/linux/cowrie` from connection through session close. A separate
+> controlled web form submission appears in `/honeypot/dev/web/access` with the
+> expected POST, field-name, credential-submission, and honeytoken metadata. These
+> tests verify the event paths for those requests only; they do not establish Windows
+> telemetry, saved-query results, or ongoing health.
 >
 > **This lab can cost money and expose hosts to the internet.** EC2, EBS, public
 > IPv4, log ingestion and storage, S3, alarms, data transfer, and optional
@@ -26,6 +33,8 @@
 - [Quick start](#quick-start)
 - [Honeypot components](#honeypot-components)
 - [Detection engineering](#detection-engineering)
+- [Linux Cowrie runtime evidence](#linux-cowrie-runtime-evidence)
+- [Web honeypot runtime evidence](#web-honeypot-runtime-evidence)
 - [Security design](#security-design)
 - [CI/CD](#cicd)
 - [Cost management](#cost-management)
@@ -46,7 +55,9 @@ optional decoys:
 
 **Key properties**
 
-- **Off by default.** Every honeypot and optional security service is disabled until you enable it.
+- **Opt-in starter configuration.** The example variables leave honeypot instances
+  and optional security services disabled. The deployed dev environment is reported
+  enabled; see the deployment and Linux runtime evidence above.
 - **Isolated.** Each decoy gets its own VPC, subnet, and security group, with no peering between them.
 - **Explicit exposure.** Listener ingress exists only for enabled decoys and only for CIDRs you list in `honeypot_ingress_cidrs` (default: empty).
 - **No public management ports.** There are no SSH or RDP admin rules. AWS Systems Manager is the intended admin path.
@@ -99,7 +110,7 @@ flowchart LR
 
 ### Defaults
 
-| Component | Purpose | Default |
+| Component | Purpose | Example default |
 |---|---|---|
 | Linux EC2 | Cowrie SSH decoy | Disabled |
 | Web EC2 | Flask decoy | Disabled |
@@ -109,6 +120,10 @@ flowchart LR
 | CloudTrail + S3 | Management-event audit trail and storage | Enabled |
 | GuardDuty, Security Hub, AWS Config | Optional findings and configuration recording | Disabled |
 | AWS Budget | Monthly spend notifications | Enabled, USD 5 threshold |
+
+These are starter values, not a description of the deployed dev environment. The
+operator reports all three honeypot instances enabled; the EC2 screenshot linked
+above shows three running instances.
 
 ## Quick start
 
@@ -178,12 +193,16 @@ public IPv4 usage, and your AWS bill.
 
 Runs Cowrie as a decoy on TCP 22 (not an administration service) and forwards its
 JSON event log, host logs, and a service-health heartbeat to CloudWatch Logs.
+The [captured runtime evidence](#linux-cowrie-runtime-evidence) shows a controlled
+SSH session reaching the Cowrie log group.
 
 ### Flask web honeypot
 
 Serves HTTP on TCP 80 with routes that mimic common WordPress, `.env`, and admin
 probes. It logs JSON request events and honeytoken indicators. Form logging records
-submitted field names and a credential-submission flag, **not** raw passwords.
+submitted field names and a credential-submission flag, **not** raw passwords. The
+[runtime evidence](#web-honeypot-runtime-evidence) shows one controlled POST logged
+with its field names and WordPress honeytoken.
 
 ### Windows RDP honeypot
 
@@ -230,13 +249,59 @@ incidents. Run them in CloudWatch Logs Insights over a time range you choose.
 
 The Cowrie and web queries expect JSON fields emitted by those applications.
 Windows queries parse XML event records inside CloudWatch Agent log messages. The
-queries and configured event sources are consistent at the repository level, but
-Windows XML parsing and all detection behavior still need runtime validation
-against real CloudWatch samples. No live detection results are claimed.
+queries and configured event sources are consistent at the repository level. The
+captured Cowrie session and web POST event verify delivery for those test requests,
+but do not verify saved query results. Windows XML parsing and Windows detection
+behavior still need runtime validation against real CloudWatch samples.
 
 See the [query guide](detections/cloudwatch-logs-insights/README.md) for details and
 limitations. Restrict access to Cowrie logs, since attempted credentials may be
 recorded, and keep retention short.
+
+## Linux Cowrie runtime evidence
+
+The supplied CloudWatch output captures one controlled SSH session dated
+2026-11-20 (UTC). Its event chain includes `cowrie.session.connect`,
+`cowrie.client.version`, `cowrie.client.kex`, `cowrie.login.success`,
+`cowrie.client.size`, `cowrie.session.params`, four `cowrie.command.input` events,
+`cowrie.log.closed`, and `cowrie.session.closed`. The associated terminal view shows
+the commands `whoami`, `uname -a`, `ls`, and `exit`.
+
+This evidence supports that Cowrie accepted the test connection, recorded the
+session events, and that the CloudWatch Agent delivered the Cowrie JSON log for
+this session to `/honeypot/dev/linux/cowrie`. It also demonstrates a successful
+connection from the configured test source. It is not a negative test of other
+source CIDRs, proof that every allow-list edge case works, or a test of alarms and
+saved query output. The screenshots have identifying fields and submitted
+credentials redacted.
+
+**Interactive Cowrie session**
+
+![Redacted Cowrie shell session showing the test commands](docs/deployment-evidence/cowrie-session-transcript-redacted.png)
+
+**CloudWatch connection and handshake events**
+
+![Redacted CloudWatch event names for connection, client version, and key exchange](docs/deployment-evidence/cowrie-cloudwatch-handshake-redacted.png)
+
+**CloudWatch login, command, and session-close events**
+
+![Redacted CloudWatch event names for login, commands, TTY close, and session close](docs/deployment-evidence/cowrie-cloudwatch-session-events-redacted.png)
+
+## Web honeypot runtime evidence
+
+The supplied screenshot shows the WordPress-style login form and a controlled POST
+to `/wp-login.php` observed in the `/honeypot/dev/web/access` CloudWatch log group.
+The event records `method: POST`, `form_fields: ["log", "pwd"]`,
+`credential_submission: true`, and the `wordpress_admin_probe` honeytoken. The log
+records submitted field names, **not** the submitted values, so credentials are not
+included in this evidence.
+
+This confirms the form-submission event path for the demonstrated request only. It
+does not establish sustained health, behavior for every route or request type,
+saved-query results, or Windows telemetry. The screenshot is a sanitized composite:
+request values and identifying network/instance details are omitted.
+
+![Sanitized web honeypot form and CloudWatch POST event](docs/deployment-evidence/web-cloudwatch-post-redacted.png)
 
 ## Security design
 
@@ -290,14 +355,16 @@ Config off, no NAT Gateway or load balancer, and a 7-day CloudWatch retention.
 
 ## Validation status
 
-| Verified (static, repository level) | Not verified |
+| Evidence available | Scope and remaining limitations |
 |---|---|
-| Terraform fmt and validate, main stack | Any AWS deployment, plan, or apply |
-| Terraform fmt and validate, state bootstrap | Live honeypot behavior |
-| Terraform init with backend disabled | Log collection at runtime |
-| Both plan-guard unit tests | Detection query results (Windows XML parsing especially) |
-| YAML parsing of six workflow files | GitHub environment, OIDC, and IAM configuration |
-| `git diff --check` | Account-specific cost and exposure |
+| Terraform formatting, validation, backend-free initialization, and plan-guard tests are covered by CI | These static checks do not validate an account-specific plan or deployment |
+| Supplied EC2 screenshot shows three instances Running with 3/3 checks | Names are truncated; this is point-in-time EC2 status evidence |
+| One Cowrie SSH test session appears in the CloudWatch event stream | Confirms the Linux event path for this session only; not continuous health or other source CIDRs |
+| Interactive Cowrie test shows `whoami`, `uname -a`, `ls`, and `exit` | Does not establish production honeypot behavior or validate every attack scenario |
+| One web POST appears in `/honeypot/dev/web/access` with the expected form fields, submission flag, and honeytoken | Confirms the event path for this request; the event contains field names, not submitted values |
+| Repository contains nine saved Logs Insights query definitions | Query output has not been demonstrated by this evidence |
+| Windows telemetry is configured in Terraform and bootstrap files | Windows log delivery and XML query parsing still require runtime testing |
+| Workflows contain OIDC and plan-provenance checks | External AWS IAM trust, GitHub environments, and account-specific cost/exposure are not verified here |
 
 ## Repository layout
 
@@ -316,6 +383,7 @@ terraform/
 detections/
   cloudwatch-logs-insights/   # Saved query definitions and query guide
 .github/workflows/            # CI, plan, apply, and destroy workflows
+docs/deployment-evidence/     # Redacted EC2, Cowrie, and web runtime screenshots
 ```
 
 Terraform variables control honeypot exposure and optional services. Resources are

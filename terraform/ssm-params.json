@@ -1,0 +1,6 @@
+{"commands":[
+"Get-Service Sysmon64,AmazonCloudWatchAgent -ErrorAction SilentlyContinue | Format-Table Name,Status | Out-String",
+"Test-Path 'C:/Program Files/Amazon/AmazonCloudWatchAgent'",
+"Get-Content 'C:/ProgramData/Amazon/AmazonCloudWatchAgent/Logs/amazon-cloudwatch-agent.log' -Tail 30 -ErrorAction SilentlyContinue",
+"Get-ChildItem 'C:/Windows/System32/config/systemprofile/AppData/Local/Temp' -Recurse -Filter err.tmp -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName; Get-Content $_.FullName }"
+]}

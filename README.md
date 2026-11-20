@@ -217,8 +217,11 @@ separate opt-in. This is the most expensive component because of higher compute 
 licensing costs.
 
 The [Windows heartbeat evidence](#windows-heartbeat-runtime-evidence) confirms that
-the health task ran on schedule and its healthy status reached CloudWatch. It does
-not demonstrate Windows Security, System, Sysmon, or PowerShell event collection.
+the health task ran on schedule and its healthy status reached CloudWatch. That
+heartbeat evidence alone does not demonstrate full Windows Security, System, Sysmon,
+or PowerShell event coverage; separate [Windows Security and Sysmon runtime
+evidence](#windows-security-and-sysmon-runtime-evidence) documents the observed
+Security and Sysmon events.
 
 **Telemetry when enabled:**
 

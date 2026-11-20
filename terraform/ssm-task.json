@@ -1,0 +1,5 @@
+{"commands":[
+"(Get-Date).ToUniversalTime().ToString('o')",
+"Get-ScheduledTaskInfo -TaskName HoneypotHealthHeartbeat | Format-List LastRunTime,LastTaskResult,NextRunTime | Out-String",
+"Get-Content C:/ProgramData/Honeypot/health.json -Tail 3"
+]}

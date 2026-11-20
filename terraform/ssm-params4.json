@@ -1,0 +1,8 @@
+{"commands":[
+"(Get-Date).ToUniversalTime().ToString('o')",
+"Get-Content 'C:/ProgramData/Amazon/AmazonCloudWatchAgent/amazon-cloudwatch-agent.log'",
+"Get-Content 'C:/ProgramData/Amazon/AmazonCloudWatchAgent/Logs/configuration-validation.log'",
+"Select-String -Path 'C:/Program Files/Amazon/AmazonCloudWatchAgent/amazon-cloudwatch-agent-ctl.ps1' -Pattern 'config-translator' -Context 1,2 | Out-String -Width 250",
+"& 'C:/Program Files/Amazon/AmazonCloudWatchAgent/config-translator.exe' --input 'C:/ProgramData/Amazon/AmazonCloudWatchAgent/Configs/file_amazon-cloudwatch-agent.json' --output 'C:/Windows/Temp/test.toml' --mode ec2 --config 'C:/ProgramData/Amazon/AmazonCloudWatchAgent/common-config.toml' 2>&1 | Out-String; Write-Output ('translator exit code: ' + $LASTEXITCODE)",
+"Select-String -Path 'C:/Program Files/Amazon/AmazonCloudWatchAgent/amazon-cloudwatch-agent-schema.json' -Pattern 'event_levels|event_ids' -Context 1,5 | Out-String -Width 250"
+]}

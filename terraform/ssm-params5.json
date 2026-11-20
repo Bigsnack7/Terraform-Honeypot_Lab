@@ -1,0 +1,8 @@
+{"commands":[
+"(Get-Date).ToUniversalTime().ToString('o')",
+"Get-Content 'C:/ProgramData/Honeypot/write-health.ps1'",
+"Get-ScheduledTask | Where-Object { $_.TaskPath -like '*oneypot*' -or $_.TaskName -like '*ealth*' } | Get-ScheduledTaskInfo | Format-List TaskName,LastRunTime,LastTaskResult,NextRunTime | Out-String",
+"Get-Content 'C:/ProgramData/Honeypot/health.json' -Tail 3",
+"Get-Service AmazonCloudWatchAgent,Sysmon64 | Format-Table Name,Status | Out-String",
+"Get-Content 'C:/ProgramData/Amazon/AmazonCloudWatchAgent/Logs/amazon-cloudwatch-agent.log' -Tail 20"
+]}

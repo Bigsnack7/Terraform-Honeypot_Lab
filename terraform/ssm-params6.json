@@ -1,0 +1,7 @@
+{"commands":[
+"(Get-Date).ToUniversalTime().ToString('o')",
+"powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:/ProgramData/Honeypot/write-health.ps1 2>&1 | Out-String; 'exit code: ' + $LASTEXITCODE",
+"Get-Content 'C:/ProgramData/Honeypot/health.json' -Tail 3",
+"Get-ScheduledTask -TaskName HoneypotHealthHeartbeat | Select-Object -ExpandProperty Actions | Format-List Execute,Arguments | Out-String",
+"(Get-ScheduledTask -TaskName HoneypotHealthHeartbeat).Principal | Format-List UserId,RunLevel | Out-String"
+]}

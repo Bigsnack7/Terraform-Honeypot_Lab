@@ -40,28 +40,28 @@ locals {
           collect_list = [
             {
               event_name      = "Security"
-              event_ids       = ["4624", "4625", "4648", "4672", "4688", "4697", "4698", "4719", "4720", "4728", "4732", "4733", "4740", "1102"]
+              event_ids       = [4624, 4625, 4648, 4672, 4688, 4697, 4698, 4719, 4720, 4728, 4732, 4733, 4740, 1102]
               event_format    = "xml"
               log_group_name  = var.security_log_group_name
               log_stream_name = "{instance_id}"
             },
             {
               event_name      = "System"
-              event_ids       = ["104", "7045"]
+              event_ids       = [104, 7045]
               event_format    = "xml"
               log_group_name  = var.system_log_group_name
               log_stream_name = "{instance_id}"
             },
             {
               event_name      = "Microsoft-Windows-Sysmon/Operational"
-              event_ids       = ["1", "3", "11", "13", "22"]
+              event_ids       = [1, 3, 11, 13, 22]
               event_format    = "xml"
               log_group_name  = var.sysmon_log_group_name
               log_stream_name = "{instance_id}"
             },
             {
               event_name      = "Microsoft-Windows-PowerShell/Operational"
-              event_ids       = ["4104"]
+              event_ids       = [4104]
               event_format    = "xml"
               log_group_name  = var.powershell_log_group_name
               log_stream_name = "{instance_id}"

@@ -4,7 +4,7 @@
 
 ![Terraform](https://img.shields.io/badge/Terraform-1.10%2B-7B42BC?logo=terraform&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-EC2%20%7C%20CloudWatch%20%7C%20CloudTrail-FF9900?logo=amazonaws&logoColor=white)
-![Status](https://img.shields.io/badge/status-Linux%20and%20web%20evidence-2ea44f)
+![Status](https://img.shields.io/badge/status-Linux%2C%20web%20and%20Windows%20telemetry-2ea44f)
 
 `Cloud Security` · `AWS` · `Terraform` · `Infrastructure as Code` · `SOC Engineering` · `Detection Engineering`
 
@@ -17,8 +17,12 @@
 > `/honeypot/dev/linux/cowrie` from connection through session close. A separate
 > controlled web form submission appears in `/honeypot/dev/web/access` with the
 > expected POST, field-name, credential-submission, and honeytoken metadata. These
-> tests verify the event paths for those requests only; they do not establish Windows
-> telemetry, saved-query results, or ongoing health.
+> tests verify the event paths for those requests only. Three healthy Windows
+> heartbeat events, including two scheduled-task runs, were also observed in
+> CloudWatch. On the rebuilt, Terraform-created Windows instance, Windows Security
+> and Sysmon events were also observed in CloudWatch, including Sysmon Event IDs 1,
+> 3, 11, and 22. These samples verify the reported event paths, not saved-query
+> results or ongoing health.
 >
 > **This lab can cost money and expose hosts to the internet.** EC2, EBS, public
 > IPv4, log ingestion and storage, S3, alarms, data transfer, and optional
@@ -35,6 +39,8 @@
 - [Detection engineering](#detection-engineering)
 - [Linux Cowrie runtime evidence](#linux-cowrie-runtime-evidence)
 - [Web honeypot runtime evidence](#web-honeypot-runtime-evidence)
+- [Windows heartbeat runtime evidence](#windows-heartbeat-runtime-evidence)
+- [Windows Security and Sysmon runtime evidence](#windows-security-and-sysmon-runtime-evidence)
 - [Security design](#security-design)
 - [CI/CD](#cicd)
 - [Cost management](#cost-management)
@@ -57,7 +63,7 @@ optional decoys:
 
 - **Opt-in starter configuration.** The example variables leave honeypot instances
   and optional security services disabled. The deployed dev environment is reported
-  enabled; see the deployment and Linux runtime evidence above.
+  enabled; see the deployment and runtime evidence below.
 - **Isolated.** Each decoy gets its own VPC, subnet, and security group, with no peering between them.
 - **Explicit exposure.** Listener ingress exists only for enabled decoys and only for CIDRs you list in `honeypot_ingress_cidrs` (default: empty).
 - **No public management ports.** There are no SSH or RDP admin rules. AWS Systems Manager is the intended admin path.
@@ -210,6 +216,10 @@ Exposes an RDP decoy only when enabled and allowed by explicit CIDRs. SMB is a
 separate opt-in. This is the most expensive component because of higher compute and
 licensing costs.
 
+The [Windows heartbeat evidence](#windows-heartbeat-runtime-evidence) confirms that
+the health task ran on schedule and its healthy status reached CloudWatch. It does
+not demonstrate Windows Security, System, Sysmon, or PowerShell event collection.
+
 **Telemetry when enabled:**
 
 - Windows Security and System event collection
@@ -251,8 +261,10 @@ The Cowrie and web queries expect JSON fields emitted by those applications.
 Windows queries parse XML event records inside CloudWatch Agent log messages. The
 queries and configured event sources are consistent at the repository level. The
 captured Cowrie session and web POST event verify delivery for those test requests,
-but do not verify saved query results. Windows XML parsing and Windows detection
-behavior still need runtime validation against real CloudWatch samples.
+and Windows heartbeat, Security, and Sysmon evidence verifies delivery for the
+reported samples. These observations do not verify saved query results, broad event
+coverage, or ongoing health. Windows query results and XML parsing across the
+configured event channels still need runtime validation.
 
 See the [query guide](detections/cloudwatch-logs-insights/README.md) for details and
 limitations. Restrict access to Cowrie logs, since attempted credentials may be
@@ -298,10 +310,46 @@ included in this evidence.
 
 This confirms the form-submission event path for the demonstrated request only. It
 does not establish sustained health, behavior for every route or request type,
-saved-query results, or Windows telemetry. The screenshot is a sanitized composite:
+saved-query results, or any Windows behavior (see the Windows evidence below). The
+screenshot is a sanitized composite:
 request values and identifying network/instance details are omitted.
 
 ![Sanitized web honeypot form and CloudWatch POST event](docs/deployment-evidence/web-cloudwatch-post-redacted.png)
+
+## Windows heartbeat runtime evidence
+
+The supplied CloudWatch output contains three `windows-honeypot` events with
+`status: healthy` in `/honeypot/dev/health/windows` on 2026-11-20 (UTC). One was
+manually triggered at about 12:08 UTC; the other two were generated by the scheduled
+task at about 12:11 and 12:16 UTC. Each event arrived in CloudWatch approximately
+five seconds after the timestamp recorded in the heartbeat payload.
+
+This confirms the Windows health check ran unattended on the demonstrated schedule
+and that its heartbeat reached CloudWatch promptly for these samples. By itself,
+this heartbeat evidence does not establish continuous health, other Windows event
+collection, or the results of Windows Logs Insights queries. The screenshot omits
+the instance identifier.
+
+![Redacted Windows healthy heartbeat events in CloudWatch](docs/deployment-evidence/windows-heartbeat-cloudwatch-redacted.png)
+
+## Windows Security and Sysmon runtime evidence
+
+The operator reports that the rebuilt Windows instance was created by Terraform
+without manual patching. CloudWatch received Windows Security and Sysmon telemetry;
+the observed Sysmon event IDs include 1 (Process Create), 3 (Network Connection),
+11 (File Create), and 22 (DNS Query). The Event ID 1 stream included creation of
+`write-health.ps1` at 13:17:53 UTC, and the supplied screenshot shows a Sysmon
+Event ID 3 network-connection event at 13:18:46 UTC.
+
+This evidence supports that the Terraform-built instance and CloudWatch Agent
+delivered the demonstrated health and Windows event samples, including activity
+from the heartbeat script. It does not establish complete event coverage, validate
+the saved Windows Logs Insights query results, or prove ongoing health. The
+sanitized evidence summary distinguishes the Event ID 3 visible in the screenshot
+from the additional event IDs reported in the accompanying validation. Instance,
+host, and network identifiers are omitted.
+
+![Sanitized Windows Sysmon event evidence summary](docs/deployment-evidence/windows-sysmon-events-redacted.png)
 
 ## Security design
 
@@ -362,8 +410,10 @@ Config off, no NAT Gateway or load balancer, and a 7-day CloudWatch retention.
 | One Cowrie SSH test session appears in the CloudWatch event stream | Confirms the Linux event path for this session only; not continuous health or other source CIDRs |
 | Interactive Cowrie test shows `whoami`, `uname -a`, `ls`, and `exit` | Does not establish production honeypot behavior or validate every attack scenario |
 | One web POST appears in `/honeypot/dev/web/access` with the expected form fields, submission flag, and honeytoken | Confirms the event path for this request; the event contains field names, not submitted values |
+| Three healthy Windows heartbeat events appear in `/honeypot/dev/health/windows`, two from the scheduled task | Confirms the health task ran unattended and heartbeat delivery for these samples; not continuous health |
+| Windows Security and Sysmon events reached CloudWatch on the rebuilt Terraform-created instance; Sysmon Event IDs 1, 3, 11, and 22 were observed | Confirms delivery for the reported samples, including `write-health.ps1` process creation; not complete event coverage or saved-query results |
 | Repository contains nine saved Logs Insights query definitions | Query output has not been demonstrated by this evidence |
-| Windows telemetry is configured in Terraform and bootstrap files | Windows log delivery and XML query parsing still require runtime testing |
+| Windows telemetry is configured in Terraform and bootstrap files | Windows query results, broader event-channel coverage, and XML parsing across the configured channels still require validation |
 | Workflows contain OIDC and plan-provenance checks | External AWS IAM trust, GitHub environments, and account-specific cost/exposure are not verified here |
 
 ## Repository layout
@@ -383,7 +433,7 @@ terraform/
 detections/
   cloudwatch-logs-insights/   # Saved query definitions and query guide
 .github/workflows/            # CI, plan, apply, and destroy workflows
-docs/deployment-evidence/     # Redacted EC2, Cowrie, and web runtime screenshots
+docs/deployment-evidence/     # Redacted EC2, Linux, web, and Windows runtime evidence
 ```
 
 Terraform variables control honeypot exposure and optional services. Resources are

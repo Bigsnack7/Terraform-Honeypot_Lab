@@ -1,14 +1,62 @@
 <Sysmon schemaversion="4.90">
   <HashAlgorithms>SHA256</HashAlgorithms>
   <EventFiltering>
-    <ProcessCreate onmatch="exclude" />
-    <NetworkConnect onmatch="exclude" />
-    <FileCreate onmatch="exclude" />
+    <!-- Event 1: log everything except the heartbeat's console host -->
+    <RuleGroup name="" groupRelation="or"><ProcessCreate onmatch="exclude">
+      <Rule name="exclude heartbeat conhost" groupRelation="and">
+        <Image condition="is">C:\Windows\System32\conhost.exe</Image>
+        <ParentCommandLine condition="contains">C:\ProgramData\Honeypot\write-health.ps1</ParentCommandLine>
+      </Rule>
+    </ProcessCreate></RuleGroup>
+
+    <!-- Event 3: exclude known AWS and Windows housekeeping, matched on full image paths -->
+    <RuleGroup name="" groupRelation="or"><NetworkConnect onmatch="exclude">
+      <Image condition="is">C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent.exe</Image>
+      <Image condition="begin with">C:\Program Files\Amazon\SSM\</Image>
+      <Image condition="is">C:\Program Files (x86)\Microsoft\EdgeUpdate\MicrosoftEdgeUpdate.exe</Image>
+      <Rule name="exclude delivery optimization" groupRelation="and">
+        <Image condition="is">C:\Windows\System32\svchost.exe</Image>
+        <User condition="is">NT AUTHORITY\NETWORK SERVICE</User>
+        <DestinationHostname condition="end with">.akamaitechnologies.com</DestinationHostname>
+      </Rule>
+    </NetworkConnect></RuleGroup>
+
+    <!-- Event 11: exclude known housekeeping file writes -->
+    <RuleGroup name="" groupRelation="or"><FileCreate onmatch="exclude">
+      <TargetFilename condition="contains">__PSScriptPolicyTest_</TargetFilename>
+      <TargetFilename condition="end with">StartupProfileData-NonInteractive</TargetFilename>
+      <Rule name="exclude eventlog lastalive" groupRelation="and">
+        <Image condition="is">C:\Windows\System32\svchost.exe</Image>
+        <TargetFilename condition="begin with">C:\Windows\ServiceState\EventLog\Data\lastalive</TargetFilename>
+      </Rule>
+      <Rule name="exclude delivery optimization cache" groupRelation="and">
+        <Image condition="is">C:\Windows\System32\svchost.exe</Image>
+        <TargetFilename condition="begin with">C:\Windows\ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization\Cache\</TargetFilename>
+      </Rule>
+      <Rule name="exclude ssm agent writes" groupRelation="and">
+        <Image condition="begin with">C:\Program Files\Amazon\SSM\</Image>
+        <TargetFilename condition="begin with">C:\ProgramData\Amazon\SSM\</TargetFilename>
+      </Rule>
+      <Rule name="exclude edge updater temp" groupRelation="and">
+        <Image condition="is">C:\Program Files (x86)\Microsoft\EdgeUpdate\MicrosoftEdgeUpdate.exe</Image>
+        <TargetFilename condition="begin with">C:\Windows\Temp\</TargetFilename>
+      </Rule>
+    </FileCreate></RuleGroup>
     <RegistryEvent onmatch="include">
       <TargetObject condition="contains">\CurrentVersion\Run</TargetObject>
       <TargetObject condition="contains">\CurrentVersion\RunOnce</TargetObject>
       <TargetObject condition="contains">\CurrentControlSet\Services</TargetObject>
     </RegistryEvent>
-    <DnsQuery onmatch="exclude" />
+    <!-- Event 22: exclude known agents and Sysmon's own reverse lookups -->
+    <RuleGroup name="" groupRelation="or"><DnsQuery onmatch="exclude">
+      <Image condition="is">C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent.exe</Image>
+      <Image condition="begin with">C:\Program Files\Amazon\SSM\</Image>
+      <Image condition="is">C:\Program Files (x86)\Microsoft\EdgeUpdate\MicrosoftEdgeUpdate.exe</Image>
+      <Image condition="is">C:\Windows\Sysmon64.exe</Image>
+      <Rule name="exclude delivery optimization dns" groupRelation="and">
+        <Image condition="is">C:\Windows\System32\svchost.exe</Image>
+        <QueryName condition="end with">.delivery.mp.microsoft.com</QueryName>
+      </Rule>
+    </DnsQuery></RuleGroup>
   </EventFiltering>
 </Sysmon>

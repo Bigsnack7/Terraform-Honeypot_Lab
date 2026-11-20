@@ -1,7 +1,0 @@
-{"commands":[
-"Get-ChildItem 'C:/ProgramData/Amazon/AmazonCloudWatchAgent' -Recurse | Select-Object FullName,Length | Format-Table -AutoSize | Out-String -Width 200",
-"Get-Content 'C:/ProgramData/Amazon/AmazonCloudWatchAgent/Logs/configuration-validation.log' -Tail 30 -ErrorAction SilentlyContinue",
-"Get-Content 'C:/ProgramData/Amazon/AmazonCloudWatchAgent/amazon-cloudwatch-agent.json' -ErrorAction SilentlyContinue",
-"Get-WinEvent -FilterHashtable @{LogName='Application';ProviderName='AmazonCloudWatchAgent'} -MaxEvents 5 -ErrorAction SilentlyContinue | Format-List TimeCreated,Message | Out-String -Width 200",
-"Get-WinEvent -FilterHashtable @{LogName='System';ProviderName='Service Control Manager'} -MaxEvents 5 -ErrorAction SilentlyContinue | Format-List TimeCreated,Message | Out-String -Width 200"
-]}

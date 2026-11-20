@@ -12,3 +12,8 @@ crash.*.log
 backend.hcl
 __pycache__/
 *.py[cod]
+
+ssm-*.json
+win-module.txt
+*.tfplan
+tfplan

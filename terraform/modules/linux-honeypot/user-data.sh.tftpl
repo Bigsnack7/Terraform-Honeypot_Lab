@@ -2,13 +2,18 @@
 set -Eeuo pipefail
 exec > >(tee -a /var/log/honeypot-bootstrap.log | logger -t honeypot-bootstrap -s 2>/dev/console) 2>&1
 
-dnf install -y amazon-cloudwatch-agent gcc git libffi-devel openssl-devel python3 python3-devel
+dnf install -y amazon-cloudwatch-agent gcc git libffi-devel openssl-devel python3.11 python3.11-devel
 id cowrie >/dev/null 2>&1 || useradd --system --create-home --home-dir /opt/cowrie --shell /sbin/nologin cowrie
 install -d -o cowrie -g cowrie /opt/cowrie
-python3 -m venv /opt/cowrie/venv
-/opt/cowrie/venv/bin/pip install --disable-pip-version-check "cowrie==${cowrie_version}"
-runuser -u cowrie -- bash -c 'cd /opt/cowrie && /opt/cowrie/venv/bin/cowrie init'
-sed -i 's|^listen_endpoints = .*|listen_endpoints = tcp:22:interface=0.0.0.0|' /opt/cowrie/etc/cowrie.cfg
+runuser -u cowrie -- git clone --depth 1 --branch "v${cowrie_version}" https://github.com/cowrie/cowrie.git /opt/cowrie/cowrie
+runuser -u cowrie -- python3.11 -m venv /opt/cowrie/cowrie/cowrie-env
+runuser -u cowrie -- /opt/cowrie/cowrie/cowrie-env/bin/python -m pip install --disable-pip-version-check -r /opt/cowrie/cowrie/requirements.txt
+cat >/opt/cowrie/cowrie/etc/cowrie.cfg <<'COWRIECFG'
+[ssh]
+listen_endpoints = tcp:22:interface=0.0.0.0
+COWRIECFG
+chown cowrie:cowrie /opt/cowrie/cowrie/etc/cowrie.cfg
+install -d -o cowrie -g cowrie /opt/cowrie/cowrie/var/log/cowrie /opt/cowrie/cowrie/var/run
 
 cat >/etc/systemd/system/cowrie.service <<'UNIT'
 [Unit]
@@ -20,12 +25,12 @@ Wants=network-online.target
 Type=forking
 User=cowrie
 Group=cowrie
-WorkingDirectory=/opt/cowrie
-Environment=PATH=/opt/cowrie/venv/bin:/usr/local/bin:/usr/bin:/bin
-PIDFile=/opt/cowrie/var/run/cowrie.pid
-ExecStartPre=/usr/bin/rm -f /opt/cowrie/var/run/cowrie.pid
-ExecStart=/opt/cowrie/venv/bin/cowrie start
-ExecStop=/opt/cowrie/venv/bin/cowrie stop
+WorkingDirectory=/opt/cowrie/cowrie
+Environment=PATH=/opt/cowrie/cowrie/cowrie-env/bin:/usr/local/bin:/usr/bin:/bin
+PIDFile=/opt/cowrie/cowrie/var/run/cowrie.pid
+ExecStartPre=/usr/bin/rm -f /opt/cowrie/cowrie/var/run/cowrie.pid
+ExecStart=/opt/cowrie/cowrie/bin/cowrie start
+ExecStop=/opt/cowrie/cowrie/bin/cowrie stop
 Restart=on-failure
 RestartSec=5
 AmbientCapabilities=CAP_NET_BIND_SERVICE
@@ -78,7 +83,7 @@ cat >/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONF
       "files": {
         "collect_list": [
           {
-            "file_path": "/opt/cowrie/var/log/cowrie/cowrie.json",
+            "file_path": "/opt/cowrie/cowrie/var/log/cowrie/cowrie.json",
             "log_group_name": "${cowrie_log_group_name}",
             "log_stream_name": "{instance_id}"
           },
@@ -105,6 +110,7 @@ cat >/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONF
 CWCONFIG
 
 systemctl daemon-reload
+systemctl disable --now sshd
 systemctl enable --now cowrie
 systemctl enable --now honeypot-health.timer
 /usr/local/sbin/honeypot-health

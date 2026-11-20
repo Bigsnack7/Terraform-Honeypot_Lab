@@ -1,0 +1,779 @@
+﻿i-071a8793f67c39665	[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[0m[35m[40m[2J[01;01H[=3h[2J[01;01H[0m[37m[40m  Booting `Amazon Linux (6.18.62-127.179.amzn2023.x86_64) 2023'
+
+
+
+[    2.845967] systemd-journald[1124]: Received client request to flush runtime journal.
+
+[    3.230981] RPC: Registered named UNIX socket transport module.
+
+[    3.231684] RPC: Registered udp transport module.
+
+[    3.232316] RPC: Registered tcp transport module.
+
+[    3.233183] RPC: Registered tcp-with-tls transport module.
+
+[    3.233795] RPC: Registered tcp NFSv4.1 backchannel transport module.
+
+[    3.309855] input: Power Button as /devices/platform/LNXPWRBN:00/input/input0
+
+[    3.311537] ACPI: button: Power Button [PWRF]
+
+[    3.312091] input: Sleep Button as /devices/platform/LNXSLPBN:00/input/input1
+
+[    3.313693] ACPI: button: Sleep Button [SLPF]
+
+[    3.338094] ena 0000:00:05.0: Elastic Network Adapter (ENA) v2.17.4g
+
+[    3.350041] ena 0000:00:05.0: ENA device version: 0.10
+
+[    3.350647] ena 0000:00:05.0: ENA controller version: 0.0.1 implementation version 1
+
+[    3.353969] i8042: PNP: PS/2 Controller [PNP0303:KBD,PNP0f13:MOU] at 0x60,0x64 irq 1,12
+
+[    3.355171] i8042: Warning: Keylock active
+
+[    3.357232] serio: i8042 KBD port at 0x60,0x64 irq 1
+
+[    3.357784] serio: i8042 AUX port at 0x60,0x64 irq 12
+
+[    3.442764] ena 0000:00:05.0: LLQ is not supported Fallback to host mode policy.
+
+[    3.455072] ena 0000:00:05.0: Elastic Network Adapter (ENA) found at mem 80400000, mac addr 0e:ff:fb:6f:98:b3
+
+[    3.552651] ena 0000:00:05.0 ens5: renamed from eth0
+
+[    3.660006] zram_generator::config[1688]: zram0: system has too much memory (913MB), limit is 800MB, ignoring.
+
+[    3.824767] nvme nvme0: using unchecked data buffer
+
+[    5.478690] cloud-init[1852]: Cloud-init v. 22.2.2 running 'init' at Fri, 20 Nov 2026 06:11:19 +0000. Up 5.41 seconds.
+
+[    5.555725] cloud-init[1852]: ci-info: ++++++++++++++++++++++++++++++++++++++Net device info+++++++++++++++++++++++++++++++++++++++
+
+[    5.558023] cloud-init[1852]: ci-info: +--------+------+-----------------------------+---------------+--------+-------------------+
+
+[    5.559925] cloud-init[1852]: ci-info: | Device |  Up  |           Address           |      Mask     | Scope  |     Hw-Address    |
+
+[    5.561838] cloud-init[1852]: ci-info: +--------+------+-----------------------------+---------------+--------+-------------------+
+
+[    5.563851] cloud-init[1852]: ci-info: |  ens5  | True |         10.40.1.250         | 255.255.255.0 | global | 0e:ff:fb:6f:98:b3 |
+
+[    5.565653] cloud-init[1852]: ci-info: |  ens5  | True | fe80::cff:fbff:fe6f:98b3/64 |       .       |  link  | 0e:ff:fb:6f:98:b3 |
+
+[    5.567442] cloud-init[1852]: ci-info: |   lo   | True |          127.0.0.1          |   255.0.0.0   |  host  |         .         |
+
+[    5.569219] cloud-init[1852]: ci-info: |   lo   | True |           ::1/128           |       .       |  host  |         .         |
+
+[    5.571036] cloud-init[1852]: ci-info: +--------+------+-----------------------------+---------------+--------+-------------------+
+
+[    5.572831] cloud-init[1852]: ci-info: +++++++++++++++++++++++++++++Route IPv4 info+++++++++++++++++++++++++++++
+
+[    5.574400] cloud-init[1852]: ci-info: +-------+-------------+-----------+-----------------+-----------+-------+
+
+[    5.575935] cloud-init[1852]: ci-info: | Route | Destination |  Gateway  |     Genmask     | Interface | Flags |
+
+[    5.577477] cloud-init[1852]: ci-info: +-------+-------------+-----------+-----------------+-----------+-------+
+
+[    5.579005] cloud-init[1852]: ci-info: |   0   |   0.0.0.0   | 10.40.1.1 |     0.0.0.0     |    ens5   |   UG  |
+
+[    5.580589] cloud-init[1852]: ci-info: |   1   |  10.40.0.2  | 10.40.1.1 | 255.255.255.255 |    ens5   |  UGH  |
+
+[    5.582330] cloud-init[1852]: ci-info: |   2   |  10.40.1.0  |  0.0.0.0  |  255.255.255.0  |    ens5   |   U   |
+
+[    5.583911] cloud-init[1852]: ci-info: |   3   |  10.40.1.1  |  0.0.0.0  | 255.255.255.255 |    ens5   |   UH  |
+
+[    5.585588] cloud-init[1852]: ci-info: +-------+-------------+-----------+-----------------+-----------+-------+
+
+[    5.587356] cloud-init[1852]: ci-info: +++++++++++++++++++Route IPv6 info+++++++++++++++++++
+
+[    5.588859] cloud-init[1852]: ci-info: +-------+-------------+---------+-----------+-------+
+
+[    5.590429] cloud-init[1852]: ci-info: | Route | Destination | Gateway | Interface | Flags |
+
+[    5.591963] cloud-init[1852]: ci-info: +-------+-------------+---------+-----------+-------+
+
+[    5.593304] cloud-init[1852]: ci-info: |   0   |  fe80::/64  |    ::   |    ens5   |   U   |
+
+[    5.594650] cloud-init[1852]: ci-info: |   2   |    local    |    ::   |    ens5   |   U   |
+
+[    5.596224] cloud-init[1852]: ci-info: |   3   |  multicast  |    ::   |    ens5   |   U   |
+
+[    5.597729] cloud-init[1852]: ci-info: +-------+-------------+---------+-----------+-------+
+
+[    7.049253] cloud-init[1852]: Generating public/private ed25519 key pair.
+
+[    7.050738] cloud-init[1852]: Your identification has been saved in /etc/ssh/ssh_host_ed25519_key
+
+[    7.052360] cloud-init[1852]: Your public key has been saved in /etc/ssh/ssh_host_ed25519_key.pub
+
+[    7.053959] cloud-init[1852]: The key fingerprint is:
+
+[    7.054946] cloud-init[1852]: SHA256:HSOR3u/JB0AcLcne+bDsbOcFR54pcpCNyissxE5shI4 root@ip-10-40-1-250.ec2.internal
+
+[    7.056743] cloud-init[1852]: The key's randomart image is:
+
+[    7.057781] cloud-init[1852]: +--[ED25519 256]--+
+
+[    7.058693] cloud-init[1852]: |        .+.+     |
+
+[    7.059589] cloud-init[1852]: |    .   ..* =    |
+
+[    7.060557] cloud-init[1852]: |   . . ..+o* o  .|
+
+[    7.061526] cloud-init[1852]: |  o +   oo=o=  oo|
+
+[    7.062413] cloud-init[1852]: | E . *  So.= *.oo|
+
+[    7.063360] cloud-init[1852]: |    = .   . B oo |
+
+[    7.064254] cloud-init[1852]: |     o o . = o  .|
+
+[    7.065133] cloud-init[1852]: |      . .   B o. |
+
+[    7.066111] cloud-init[1852]: |           . +.  |
+
+[    7.067045] cloud-init[1852]: +----[SHA256]-----+
+
+[    7.067953] cloud-init[1852]: Generating public/private ecdsa key pair.
+
+[    7.069180] cloud-init[1852]: Your identification has been saved in /etc/ssh/ssh_host_ecdsa_key
+
+[    7.070758] cloud-init[1852]: Your public key has been saved in /etc/ssh/ssh_host_ecdsa_key.pub
+
+[    7.072289] cloud-init[1852]: The key fingerprint is:
+
+[    7.073274] cloud-init[1852]: SHA256:hjhhQtmesio87B7IR3Y4X2kWQPxrEXGzhjslJMol+s8 root@ip-10-40-1-250.ec2.internal
+
+[    7.075072] cloud-init[1852]: The key's randomart image is:
+
+[    7.076090] cloud-init[1852]: +---[ECDSA 256]---+
+
+[    7.076992] cloud-init[1852]: |  .+o= o.o       |
+
+[    7.077955] cloud-init[1852]: | .+ =.+.o o      |
+
+[    7.078857] cloud-init[1852]: | ..+o..+.+       |
+
+[    7.079751] cloud-init[1852]: |  oo+o +B        |
+
+[    7.080751] cloud-init[1852]: |   Oo..BS        |
+
+[    7.081667] cloud-init[1852]: |o + *.++.        |
+
+[    7.082596] cloud-init[1852]: |++ . E.          |
+
+[    7.083497] cloud-init[1852]: |o+o              |
+
+[    7.084380] cloud-init[1852]: |+o.              |
+
+[    7.085130] cloud-init[1852]: +----[SHA256]-----+
+
+[    7.569465] cloud-init[1981]: Cloud-init v. 22.2.2 running 'modules:config' at Fri, 20 Nov 2026 06:11:21 +0000. Up 7.50 seconds.
+
+[    8.113343] cloud-init[1991]: Cloud-init v. 22.2.2 running 'modules:final' at Fri, 20 Nov 2026 06:11:22 +0000. Up 8.06 seconds.
+
+2026/11/20 06:11:24Z: Amazon SSM Agent v3.3.5828.0 is running
+2026/11/20 06:11:24Z: OsProductName: Amazon Linux
+2026/11/20 06:11:24Z: OsVersion: 2023
+<13>Nov 20 06:11:22 honeypot-bootstrap: Amazon Linux 2023 repository                     70 MB/s |  91 MB     00:01    
+
+
+
+Amazon Linux 2023.12.20261119
+
+Kernel 6.18.62-127.179.amzn2023.x86_64 on an x86_64 (-)
+
+
+
+ip-10-40-1-250 login: <13>Nov 20 06:11:47 honeypot-bootstrap: Amazon Linux 2023 Kernel Livepatch repository   1.1 MB/s | 122 kB     00:00    
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: Dependencies resolved.
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: ================================================================================
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  Package                    Arch   Version                    Repository   Size
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: ================================================================================
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: Installing:
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  amazon-cloudwatch-agent    x86_64 1.300073.2-1.amzn2023      amazonlinux  71 M
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  gcc                        x86_64 11.5.0-5.amzn2023.0.5      amazonlinux  36 M
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  git                        x86_64 2.50.1-1.amzn2023.0.2      amazonlinux  50 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  libffi-devel               x86_64 3.4.4-1.amzn2023.0.1       amazonlinux  30 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  openssl-devel              x86_64 1:3.5.8-1.amzn2023.0.4     amazonlinux 3.5 M
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  python3.11                 x86_64 3.11.18-1.amzn2023.0.1     amazonlinux  28 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  python3.11-devel           x86_64 3.11.18-1.amzn2023.0.1     amazonlinux 235 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: Installing dependencies:
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  annobin-docs               noarch 12.69-1.amzn2023.0.1       amazonlinux  93 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  annobin-plugin-gcc         x86_64 12.69-1.amzn2023.0.1       amazonlinux 974 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  cpp                        x86_64 11.5.0-5.amzn2023.0.5      amazonlinux  11 M
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  gc                         x86_64 8.0.4-5.amzn2023.0.2       amazonlinux 105 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  gcc-plugin-annobin         x86_64 11.5.0-5.amzn2023.0.5      amazonlinux  38 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  git-core                   x86_64 2.50.1-1.amzn2023.0.2      amazonlinux 4.9 M
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  git-core-doc               noarch 2.50.1-1.amzn2023.0.2      amazonlinux 2.8 M
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  glibc-devel                x86_64 2.34-231.amzn2023.0.6      amazonlinux  31 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  glibc-headers-x86          noarch 2.34-231.amzn2023.0.6      amazonlinux 437 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  guile22                    x86_64 2.2.7-2.amzn2023.0.3       amazonlinux 6.4 M
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  kernel6.18-headers         x86_64 1:6.18.62-127.179.amzn2023 amazonlinux 1.6 M
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  libmpc                     x86_64 1.2.1-2.amzn2023.0.2       amazonlinux  62 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  libtool-ltdl               x86_64 2.4.7-1.amzn2023.0.3       amazonlinux  38 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  libxcrypt-devel            x86_64 4.4.33-7.amzn2023          amazonlinux  32 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  make                       x86_64 1:4.3-5.amzn2023.0.2       amazonlinux 534 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  mpdecimal                  x86_64 2.5.1-3.amzn2023.0.3       amazonlinux 101 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  perl-Error                 noarch 1:0.17030-2.amzn2023.0.1   amazonlinux  42 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  perl-File-Find             noarch 1.37-477.amzn2023.0.11     amazonlinux  26 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  perl-Git                   noarch 2.50.1-1.amzn2023.0.2      amazonlinux  38 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  perl-TermReadKey           x86_64 2.38-9.amzn2023.0.3        amazonlinux  36 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  perl-lib                   x86_64 0.65-477.amzn2023.0.11     amazonlinux  15 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  python3.11-libs            x86_64 3.11.18-1.amzn2023.0.1     amazonlinux 9.7 M
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  python3.11-pip-wheel       noarch 22.3.1-2.amzn2023.0.15     amazonlinux 1.4 M
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  python3.11-setuptools-wheel
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:                             noarch 65.5.1-2.amzn2023.0.7      amazonlinux 717 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: Installing weak dependencies:
+
+<13>Nov 20 06:11:49 honeypot-bootstrap:  libxcrypt-compat           x86_64 4.4.33-7.amzn2023          amazonlinux  92 k
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: 
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: Transaction Summary
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: ================================================================================
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: Install  32 Packages
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: 
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: Total download size: 152 M
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: Installed size: 524 M
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: Downloading Packages:
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: (1/32): annobin-docs-12.69-1.amzn2023.0.1.noarc 3.9 MB/s |  93 kB     00:00    
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: (2/32): annobin-plugin-gcc-12.69-1.amzn2023.0.1  25 MB/s | 974 kB     00:00    
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: (3/32): gc-8.0.4-5.amzn2023.0.2.x86_64.rpm      3.0 MB/s | 105 kB     00:00    
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: (4/32): cpp-11.5.0-5.amzn2023.0.5.x86_64.rpm     69 MB/s |  11 MB     00:00    
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: (5/32): gcc-plugin-annobin-11.5.0-5.amzn2023.0. 1.7 MB/s |  38 kB     00:00    
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: (6/32): git-2.50.1-1.amzn2023.0.2.x86_64.rpm    1.9 MB/s |  50 kB     00:00    
+
+<13>Nov 20 06:11:49 honeypot-bootstrap: (7/32): git-core-2.50.1-1.amzn2023.0.2.x86_64.r  54 MB/s | 4.9 MB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (8/32): git-core-doc-2.50.1-1.amzn2023.0.2.noar  58 MB/s | 2.8 MB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (9/32): glibc-devel-2.34-231.amzn2023.0.6.x86_6 1.3 MB/s |  31 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (10/32): glibc-headers-x86-2.34-231.amzn2023.0.  13 MB/s | 437 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (11/32): gcc-11.5.0-5.amzn2023.0.5.x86_64.rpm    69 MB/s |  36 MB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (12/32): guile22-2.2.7-2.amzn2023.0.3.x86_64.rp  30 MB/s | 6.4 MB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (13/32): kernel6.18-headers-6.18.62-127.179.amz  24 MB/s | 1.6 MB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (14/32): libffi-devel-3.4.4-1.amzn2023.0.1.x86_ 1.1 MB/s |  30 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (15/32): libmpc-1.2.1-2.amzn2023.0.2.x86_64.rpm 2.3 MB/s |  62 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (16/32): libtool-ltdl-2.4.7-1.amzn2023.0.3.x86_ 1.6 MB/s |  38 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (17/32): libxcrypt-compat-4.4.33-7.amzn2023.x86 3.4 MB/s |  92 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (18/32): libxcrypt-devel-4.4.33-7.amzn2023.x86_ 1.1 MB/s |  32 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (19/32): make-4.3-5.amzn2023.0.2.x86_64.rpm      16 MB/s | 534 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (20/32): amazon-cloudwatch-agent-1.300073.2-1.a  63 MB/s |  71 MB     00:01    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (21/32): mpdecimal-2.5.1-3.amzn2023.0.3.x86_64. 255 kB/s | 101 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (22/32): openssl-devel-3.5.8-1.amzn2023.0.4.x86 8.5 MB/s | 3.5 MB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (23/32): perl-Error-0.17030-2.amzn2023.0.1.noar 1.1 MB/s |  42 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (24/32): perl-File-Find-1.37-477.amzn2023.0.11. 768 kB/s |  26 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (25/32): perl-Git-2.50.1-1.amzn2023.0.2.noarch. 1.5 MB/s |  38 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (26/32): perl-TermReadKey-2.38-9.amzn2023.0.3.x 1.4 MB/s |  36 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (27/32): perl-lib-0.65-477.amzn2023.0.11.x86_64 584 kB/s |  15 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (28/32): python3.11-3.11.18-1.amzn2023.0.1.x86_ 989 kB/s |  28 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (29/32): python3.11-devel-3.11.18-1.amzn2023.0. 8.2 MB/s | 235 kB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (30/32): python3.11-pip-wheel-22.3.1-2.amzn2023  41 MB/s | 1.4 MB     00:00    
+
+<13>Nov 20 06:11:50 honeypot-bootstrap: (31/32): python3.11-setuptools-wheel-65.5.1-2.a  17 MB/s | 717 kB     00:00    
+
+<13>Nov 20 06:11:51 honeypot-bootstrap: (32/32): python3.11-libs-3.11.18-1.amzn2023.0.1  63 MB/s | 9.7 MB     00:00    
+
+<13>Nov 20 06:11:51 honeypot-bootstrap: --------------------------------------------------------------------------------
+
+<13>Nov 20 06:11:51 honeypot-bootstrap: Total                                           107 MB/s | 152 MB     00:01     
+
+<13>Nov 20 06:11:52 honeypot-bootstrap: Running transaction check
+
+<13>Nov 20 06:11:52 honeypot-bootstrap: Transaction check succeeded.
+
+<13>Nov 20 06:11:52 honeypot-bootstrap: Running transaction test
+
+<13>Nov 20 06:11:54 honeypot-bootstrap: Transaction test succeeded.
+
+<13>Nov 20 06:11:54 honeypot-bootstrap: Running transaction
+
+<13>Nov 20 06:11:56 honeypot-bootstrap:   Preparing        :                                                        1/1 
+
+<13>Nov 20 06:11:56 honeypot-bootstrap:   Installing       : libmpc-1.2.1-2.amzn2023.0.2.x86_64                    1/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : git-core-2.50.1-1.amzn2023.0.2.x86_64                 2/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : git-core-doc-2.50.1-1.amzn2023.0.2.noarch             3/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : cpp-11.5.0-5.amzn2023.0.5.x86_64                      4/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : python3.11-setuptools-wheel-65.5.1-2.amzn2023.0.7.    5/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : perl-lib-0.65-477.amzn2023.0.11.x86_64                6/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : perl-TermReadKey-2.38-9.amzn2023.0.3.x86_64           7/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : perl-File-Find-1.37-477.amzn2023.0.11.noarch          8/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : perl-Error-1:0.17030-2.amzn2023.0.1.noarch            9/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : perl-Git-2.50.1-1.amzn2023.0.2.noarch                10/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : git-2.50.1-1.amzn2023.0.2.x86_64                     11/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : mpdecimal-2.5.1-3.amzn2023.0.3.x86_64                12/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : libxcrypt-compat-4.4.33-7.amzn2023.x86_64            13/32 
+
+<13>Nov 20 06:11:57 honeypot-bootstrap:   Installing       : python3.11-pip-wheel-22.3.1-2.amzn2023.0.15.noarch   14/32 
+
+<13>Nov 20 06:11:59 honeypot-bootstrap:   Installing       : python3.11-3.11.18-1.amzn2023.0.1.x86_64             15/32 
+
+<13>Nov 20 06:11:59 honeypot-bootstrap:   Installing       : python3.11-libs-3.11.18-1.amzn2023.0.1.x86_64        16/32 
+
+<13>Nov 20 06:11:59 honeypot-bootstrap:   Installing       : libtool-ltdl-2.4.7-1.amzn2023.0.3.x86_64             17/32 
+
+<13>Nov 20 06:12:00 honeypot-bootstrap:   Installing       : kernel6.18-headers-1:6.18.62-127.179.amzn2023.x86_   18/32 
+
+<13>Nov 20 06:12:00 honeypot-bootstrap:   Installing       : glibc-headers-x86-2.34-231.amzn2023.0.6.noarch       19/32 
+
+<13>Nov 20 06:12:00 honeypot-bootstrap:   Installing       : libxcrypt-devel-4.4.33-7.amzn2023.x86_64             20/32 
+
+<13>Nov 20 06:12:00 honeypot-bootstrap:   Installing       : glibc-devel-2.34-231.amzn2023.0.6.x86_64             21/32 
+
+<13>Nov 20 06:12:00 honeypot-bootstrap:   Installing       : gc-8.0.4-5.amzn2023.0.2.x86_64                       22/32 
+
+<13>Nov 20 06:12:00 honeypot-bootstrap:   Installing       : guile22-2.2.7-2.amzn2023.0.3.x86_64                  23/32 
+
+<13>Nov 20 06:12:03 honeypot-bootstrap:   Installing       : make-1:4.3-5.amzn2023.0.2.x86_64                     24/32 
+
+<13>Nov 20 06:12:03 honeypot-bootstrap:   Installing       : gcc-11.5.0-5.amzn2023.0.5.x86_64                     25/32 
+
+<13>Nov 20 06:12:03 honeypot-bootstrap:   Running scriptlet: gcc-11.5.0-5.amzn2023.0.5.x86_64                     25/32 
+
+<13>Nov 20 06:12:03 honeypot-bootstrap:   Installing       : annobin-docs-12.69-1.amzn2023.0.1.noarch             26/32 
+
+<13>Nov 20 06:12:03 honeypot-bootstrap:   Installing       : annobin-plugin-gcc-12.69-1.amzn2023.0.1.x86_64       27/32 
+
+<13>Nov 20 06:12:03 honeypot-bootstrap:   Running scriptlet: annobin-plugin-gcc-12.69-1.amzn2023.0.1.x86_64       27/32 
+
+<13>Nov 20 06:12:03 honeypot-bootstrap:   Installing       : gcc-plugin-annobin-11.5.0-5.amzn2023.0.5.x86_64      28/32 
+
+<13>Nov 20 06:12:05 honeypot-bootstrap:   Installing       : python3.11-devel-3.11.18-1.amzn2023.0.1.x86_64       29/32 
+
+<13>Nov 20 06:12:05 honeypot-bootstrap:   Installing       : openssl-devel-1:3.5.8-1.amzn2023.0.4.x86_64          30/32 
+
+<13>Nov 20 06:12:05 honeypot-bootstrap:   Installing       : libffi-devel-3.4.4-1.amzn2023.0.1.x86_64             31/32 
+
+<13>Nov 20 06:12:05 honeypot-bootstrap:   Running scriptlet: amazon-cloudwatch-agent-1.300073.2-1.amzn2023.x86_   32/32 
+
+<13>Nov 20 06:12:05 honeypot-bootstrap: create group cwagent, result: 0
+
+<13>Nov 20 06:12:05 honeypot-bootstrap: create user cwagent, result: 0
+
+<13>Nov 20 06:12:05 honeypot-bootstrap: 
+
+<13>Nov 20 06:12:07 honeypot-bootstrap:   Installing       : amazon-cloudwatch-agent-1.300073.2-1.amzn2023.x86_   32/32 
+
+[   51.627943] zram_generator::config[2184]: zram0: system has too much memory (913MB), limit is 800MB, ignoring.
+
+[   52.721386] zram_generator::config[2455]: zram0: system has too much memory (913MB), limit is 800MB, ignoring.
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Running scriptlet: amazon-cloudwatch-agent-1.300073.2-1.amzn2023.x86_   32/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : amazon-cloudwatch-agent-1.300073.2-1.amzn2023.x86_    1/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : annobin-docs-12.69-1.amzn2023.0.1.noarch              2/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : annobin-plugin-gcc-12.69-1.amzn2023.0.1.x86_64        3/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : cpp-11.5.0-5.amzn2023.0.5.x86_64                      4/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : gc-8.0.4-5.amzn2023.0.2.x86_64                        5/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : gcc-11.5.0-5.amzn2023.0.5.x86_64                      6/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : gcc-plugin-annobin-11.5.0-5.amzn2023.0.5.x86_64       7/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : git-2.50.1-1.amzn2023.0.2.x86_64                      8/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : git-core-2.50.1-1.amzn2023.0.2.x86_64                 9/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : git-core-doc-2.50.1-1.amzn2023.0.2.noarch            10/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : glibc-devel-2.34-231.amzn2023.0.6.x86_64             11/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : glibc-headers-x86-2.34-231.amzn2023.0.6.noarch       12/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : guile22-2.2.7-2.amzn2023.0.3.x86_64                  13/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : kernel6.18-headers-1:6.18.62-127.179.amzn2023.x86_   14/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : libffi-devel-3.4.4-1.amzn2023.0.1.x86_64             15/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : libmpc-1.2.1-2.amzn2023.0.2.x86_64                   16/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : libtool-ltdl-2.4.7-1.amzn2023.0.3.x86_64             17/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : libxcrypt-compat-4.4.33-7.amzn2023.x86_64            18/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : libxcrypt-devel-4.4.33-7.amzn2023.x86_64             19/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : make-1:4.3-5.amzn2023.0.2.x86_64                     20/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : mpdecimal-2.5.1-3.amzn2023.0.3.x86_64                21/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : openssl-devel-1:3.5.8-1.amzn2023.0.4.x86_64          22/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : perl-Error-1:0.17030-2.amzn2023.0.1.noarch           23/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : perl-File-Find-1.37-477.amzn2023.0.11.noarch         24/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : perl-Git-2.50.1-1.amzn2023.0.2.noarch                25/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : perl-TermReadKey-2.38-9.amzn2023.0.3.x86_64          26/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : perl-lib-0.65-477.amzn2023.0.11.x86_64               27/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : python3.11-3.11.18-1.amzn2023.0.1.x86_64             28/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : python3.11-devel-3.11.18-1.amzn2023.0.1.x86_64       29/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : python3.11-libs-3.11.18-1.amzn2023.0.1.x86_64        30/32 
+
+<13>Nov 20 06:12:08 honeypot-bootstrap:   Verifying        : python3.11-pip-wheel-22.3.1-2.amzn2023.0.15.noarch   31/32 
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   Verifying        : python3.11-setuptools-wheel-65.5.1-2.amzn2023.0.7.   32/32 
+
+<13>Nov 20 06:12:09 honeypot-bootstrap: 
+
+<13>Nov 20 06:12:09 honeypot-bootstrap: Installed:
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   amazon-cloudwatch-agent-1.300073.2-1.amzn2023.x86_64                          
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   annobin-docs-12.69-1.amzn2023.0.1.noarch                                      
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   annobin-plugin-gcc-12.69-1.amzn2023.0.1.x86_64                                
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   cpp-11.5.0-5.amzn2023.0.5.x86_64                                              
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   gc-8.0.4-5.amzn2023.0.2.x86_64                                                
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   gcc-11.5.0-5.amzn2023.0.5.x86_64                                              
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   gcc-plugin-annobin-11.5.0-5.amzn2023.0.5.x86_64                               
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   git-2.50.1-1.amzn2023.0.2.x86_64                                              
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   git-core-2.50.1-1.amzn2023.0.2.x86_64                                         
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   git-core-doc-2.50.1-1.amzn2023.0.2.noarch                                     
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   glibc-devel-2.34-231.amzn2023.0.6.x86_64                                      
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   glibc-headers-x86-2.34-231.amzn2023.0.6.noarch                                
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   guile22-2.2.7-2.amzn2023.0.3.x86_64                                           
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   kernel6.18-headers-1:6.18.62-127.179.amzn2023.x86_64                          
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   libffi-devel-3.4.4-1.amzn2023.0.1.x86_64                                      
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   libmpc-1.2.1-2.amzn2023.0.2.x86_64                                            
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   libtool-ltdl-2.4.7-1.amzn2023.0.3.x86_64                                      
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   libxcrypt-compat-4.4.33-7.amzn2023.x86_64                                     
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   libxcrypt-devel-4.4.33-7.amzn2023.x86_64                                      
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   make-1:4.3-5.amzn2023.0.2.x86_64                                              
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   mpdecimal-2.5.1-3.amzn2023.0.3.x86_64                                         
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   openssl-devel-1:3.5.8-1.amzn2023.0.4.x86_64                                   
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   perl-Error-1:0.17030-2.amzn2023.0.1.noarch                                    
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   perl-File-Find-1.37-477.amzn2023.0.11.noarch                                  
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   perl-Git-2.50.1-1.amzn2023.0.2.noarch                                         
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   perl-TermReadKey-2.38-9.amzn2023.0.3.x86_64                                   
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   perl-lib-0.65-477.amzn2023.0.11.x86_64                                        
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   python3.11-3.11.18-1.amzn2023.0.1.x86_64                                      
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   python3.11-devel-3.11.18-1.amzn2023.0.1.x86_64                                
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   python3.11-libs-3.11.18-1.amzn2023.0.1.x86_64                                 
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   python3.11-pip-wheel-22.3.1-2.amzn2023.0.15.noarch                            
+
+<13>Nov 20 06:12:09 honeypot-bootstrap:   python3.11-setuptools-wheel-65.5.1-2.amzn2023.0.7.noarch                      
+
+<13>Nov 20 06:12:09 honeypot-bootstrap: 
+
+<13>Nov 20 06:12:09 honeypot-bootstrap: Complete!
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: Cloning into '/opt/cowrie/cowrie'...
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: Note: switching to '8e36327f6a24abe379dac807cc7e8b2d2fb01248'.
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: 
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: You are in 'detached HEAD' state. You can look around, make experimental
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: changes and commit them, and you can discard any commits you make in this
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: state without impacting any branches by switching back to a branch.
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: 
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: If you want to create a new branch to retain commits you create, you may
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: do so (now or later) by using -c with the switch command. Example:
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: 
+
+<13>Nov 20 06:12:10 honeypot-bootstrap:   git switch -c <new-branch-name>
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: 
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: Or undo this operation with:
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: 
+
+<13>Nov 20 06:12:10 honeypot-bootstrap:   git switch -
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: 
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: Turn off this advice by setting config variable advice.detachedHead to false
+
+<13>Nov 20 06:12:10 honeypot-bootstrap: 
+
+<13>Nov 20 06:12:17 honeypot-bootstrap: Collecting attrs==26.1.0
+
+<13>Nov 20 06:12:17 honeypot-bootstrap:   Downloading attrs-26.1.0-py3-none-any.whl (67 kB)
+
+<13>Nov 20 06:12:17 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 67.5/67.5 kB 1.1 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:17 honeypot-bootstrap: Collecting bcrypt==5.0.0
+
+<13>Nov 20 06:12:17 honeypot-bootstrap:   Downloading bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl (278 kB)
+
+<13>Nov 20 06:12:17 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 278.2/278.2 kB 2.6 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:18 honeypot-bootstrap: Collecting cryptography==50.0.2
+
+<13>Nov 20 06:12:18 honeypot-bootstrap:   Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl (4.8 MB)
+
+<13>Nov 20 06:12:19 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 4.8/4.8 MB 23.3 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:19 honeypot-bootstrap: Collecting hyperlink==21.0.0
+
+<13>Nov 20 06:12:19 honeypot-bootstrap:   Downloading hyperlink-21.0.0-py2.py3-none-any.whl (74 kB)
+
+<13>Nov 20 06:12:19 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 74.6/74.6 kB 18.4 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:19 honeypot-bootstrap: Collecting idna==3.20
+
+<13>Nov 20 06:12:19 honeypot-bootstrap:   Downloading idna-3.20-py3-none-any.whl (69 kB)
+
+<13>Nov 20 06:12:19 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 69.6/69.6 kB 21.9 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:19 honeypot-bootstrap: Collecting lark==1.3.1
+
+<13>Nov 20 06:12:19 honeypot-bootstrap:   Downloading lark-1.3.1-py3-none-any.whl (113 kB)
+
+<13>Nov 20 06:12:19 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 113.2/113.2 kB 25.2 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:19 honeypot-bootstrap: Collecting packaging==26.3
+
+<13>Nov 20 06:12:19 honeypot-bootstrap:   Downloading packaging-26.3-py3-none-any.whl (129 kB)
+
+<13>Nov 20 06:12:19 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 130.0/130.0 kB 22.7 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:19 honeypot-bootstrap: Collecting pyasn1_modules==0.4.2
+
+<13>Nov 20 06:12:19 honeypot-bootstrap:   Downloading pyasn1_modules-0.4.2-py3-none-any.whl (181 kB)
+
+<13>Nov 20 06:12:19 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 181.3/181.3 kB 40.6 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:19 honeypot-bootstrap: Collecting service_identity==26.1.0
+
+<13>Nov 20 06:12:19 honeypot-bootstrap:   Downloading service_identity-26.1.0-py3-none-any.whl (11 kB)
+
+<13>Nov 20 06:12:19 honeypot-bootstrap: Collecting treq==26.7.0
+
+<13>Nov 20 06:12:20 honeypot-bootstrap:   Downloading treq-26.7.0-py3-none-any.whl (75 kB)
+
+<13>Nov 20 06:12:20 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 75.5/75.5 kB 7.0 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:20 honeypot-bootstrap: Collecting twisted[conch]==26.10.0
+
+<13>Nov 20 06:12:20 honeypot-bootstrap:   Downloading twisted-26.10.0-py3-none-any.whl (3.3 MB)
+
+<13>Nov 20 06:12:20 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 3.3/3.3 MB 109.3 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:20 honeypot-bootstrap: Collecting cffi>=2.0.0
+
+<13>Nov 20 06:12:20 honeypot-bootstrap:   Downloading cffi-2.1.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (217 kB)
+
+<13>Nov 20 06:12:20 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 217.8/217.8 kB 50.2 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:20 honeypot-bootstrap: Collecting pyasn1<0.7.0,>=0.6.1
+
+<13>Nov 20 06:12:20 honeypot-bootstrap:   Downloading pyasn1-0.6.5-py3-none-any.whl (84 kB)
+
+<13>Nov 20 06:12:20 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 84.8/84.8 kB 21.9 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:21 honeypot-bootstrap: Collecting incremental>=24.7.2
+
+<13>Nov 20 06:12:21 honeypot-bootstrap:   Downloading incremental-24.11.0-py3-none-any.whl (21 kB)
+
+<13>Nov 20 06:12:21 honeypot-bootstrap: Collecting multipart
+
+<13>Nov 20 06:12:21 honeypot-bootstrap:   Downloading multipart-2.0.1-py3-none-any.whl (16 kB)
+
+<13>Nov 20 06:12:21 honeypot-bootstrap: Collecting typing-extensions>=3.10.0
+
+<13>Nov 20 06:12:21 honeypot-bootstrap:   Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+
+<13>Nov 20 06:12:21 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 45.6/45.6 kB 14.6 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:21 honeypot-bootstrap: Collecting automat>=24.8.1
+
+<13>Nov 20 06:12:21 honeypot-bootstrap:   Downloading automat-25.4.16-py3-none-any.whl (42 kB)
+
+<13>Nov 20 06:12:21 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 42.8/42.8 kB 4.8 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:21 honeypot-bootstrap: Collecting constantly>=15.1
+
+<13>Nov 20 06:12:21 honeypot-bootstrap:   Downloading constantly-23.10.4-py3-none-any.whl (13 kB)
+
+<13>Nov 20 06:12:22 honeypot-bootstrap: Collecting zope-interface>=8
+
+<13>Nov 20 06:12:22 honeypot-bootstrap:   Downloading zope_interface-8.7-cp311-cp311-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl (276 kB)
+
+<13>Nov 20 06:12:22 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 276.2/276.2 kB 50.0 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:22 honeypot-bootstrap: Collecting appdirs>=1.4.0
+
+<13>Nov 20 06:12:22 honeypot-bootstrap:   Downloading appdirs-1.4.4-py2.py3-none-any.whl (9.6 kB)
+
+<13>Nov 20 06:12:22 honeypot-bootstrap: Collecting pycparser
+
+<13>Nov 20 06:12:22 honeypot-bootstrap:   Downloading pycparser-3.12-py3-none-any.whl (62 kB)
+
+<13>Nov 20 06:12:22 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 62.6/62.6 kB 14.4 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:22 honeypot-bootstrap: Collecting pyopenssl>=25.3.0
+
+<13>Nov 20 06:12:22 honeypot-bootstrap:   Downloading pyopenssl-26.4.0-py3-none-any.whl (56 kB)
+
+<13>Nov 20 06:12:22 honeypot-bootstrap:      ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü 56.0/56.0 kB 18.4 MB/s eta 0:00:00
+
+<13>Nov 20 06:12:23 honeypot-bootstrap: Installing collected packages: appdirs, zope-interface, typing-extensions, pycparser, pyasn1, packaging, multipart, lark, idna, constantly, bcrypt, automat, attrs, pyasn1_modules, incremental, hyperlink, cffi, twisted, cryptography, service_identity, pyopenssl, treq
+
+<13>Nov 20 06:12:29 honeypot-bootstrap: Successfully installed appdirs-1.4.4 attrs-26.1.0 automat-25.4.16 bcrypt-5.0.0 cffi-2.1.1 constantly-23.10.4 cryptography-50.0.2 hyperlink-21.0.0 idna-3.20 incremental-24.11.0 lark-1.3.1 multipart-2.0.1 packaging-26.3 pyasn1-0.6.5 pyasn1_modules-0.4.2 pycparser-3.12 pyopenssl-26.4.0 service_identity-26.1.0 treq-26.7.0 twisted-26.10.0 typing-extensions-4.16.0 zope-interface-8.7
+
+<13>Nov 20 06:12:29 honeypot-bootstrap: cp: cannot stat '/opt/cowrie/cowrie/etc/cowrie.cfg.dist': No such file or directory
+
+[   73.660358] cloud-init[1991]: 2026-11-20 06:12:29,442 - cc_scripts_user.py[WARNING]: Failed to run module scripts-user (scripts in /var/lib/cloud/instance/scripts)
+
+[   73.661048] cloud-init[1991]: 2026-11-20 06:12:29,443 - util.py[WARNING]: Running module scripts-user (<module 'cloudinit.config.cc_scripts_user' from '/usr/lib/python3.9/site-packages/cloudinit/config/cc_scripts_user.py'>) failed
+
+ci-info: no authorized SSH keys fingerprints found for user ec2-user.
+
+<14>Nov 20 06:12:29 cloud-init: #############################################################
+
+<14>Nov 20 06:12:29 cloud-init: -----BEGIN SSH HOST KEY FINGERPRINTS-----
+
+<14>Nov 20 06:12:29 cloud-init: 256 SHA256:hjhhQtmesio87B7IR3Y4X2kWQPxrEXGzhjslJMol+s8 root@ip-10-40-1-250.ec2.internal (ECDSA)
+
+<14>Nov 20 06:12:29 cloud-init: 256 SHA256:HSOR3u/JB0AcLcne+bDsbOcFR54pcpCNyissxE5shI4 root@ip-10-40-1-250.ec2.internal (ED25519)
+
+<14>Nov 20 06:12:29 cloud-init: -----END SSH HOST KEY FINGERPRINTS-----
+
+<14>Nov 20 06:12:29 cloud-init: #############################################################
+
+-----BEGIN SSH HOST KEY KEYS-----
+
+ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHpxGwzn/UN9fUuRvrDRTBDye3grL+knAlD888iFOnQGg88svWf8wbdGG3bQ+6Bp2nj4ZXG+4U6Z0fCI9INvf3E= root@ip-10-40-1-250.ec2.internal
+
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPX6Y9yp4R9t6y3dvbEOnx5ReAYkZ3MddUBaRMsDqh8X root@ip-10-40-1-250.ec2.internal
+
+-----END SSH HOST KEY KEYS-----
+
+[   73.776536] cloud-init[1991]: Cloud-init v. 22.2.2 finished at Fri, 20 Nov 2026 06:12:29 +0000. Datasource DataSourceEc2.  Up 73.76 seconds
+
+[[0;1;31mFAILED[0m] Failed to start [0;1;39mcloud-finaΓÇª Execute cloud user/final scripts.
+
+
+	2026-11-20T06:35:00+00:00

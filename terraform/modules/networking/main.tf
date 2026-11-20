@@ -101,7 +101,6 @@ resource "aws_security_group" "honeypot" {
   description            = "Isolated ${each.key} honeypot listener; no administrative ingress."
   vpc_id                 = aws_vpc.honeypot[each.key].id
   revoke_rules_on_delete = true
-  egress                 = []
 
   tags = {
     Name     = "${var.name_prefix}-${each.key}-honeypot"

@@ -32,7 +32,7 @@ resource "aws_cloudwatch_log_group" "honeypot" {
 resource "aws_cloudwatch_query_definition" "detections" {
   for_each = var.query_definitions
 
-  name            = "/${var.environment}/honeypot/${each.key}"
+  name            = "${var.environment}/honeypot/${each.key}"
   query_string    = each.value.query_string
   log_group_names = each.value.log_group_names
 }

@@ -3,6 +3,10 @@ data "aws_ssm_parameter" "amazon_linux_2023" {
 }
 
 resource "aws_instance" "web" {
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
   ami                         = data.aws_ssm_parameter.amazon_linux_2023.value
   instance_type               = var.instance_type
   subnet_id                   = var.subnet_id

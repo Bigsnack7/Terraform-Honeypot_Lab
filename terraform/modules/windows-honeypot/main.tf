@@ -74,6 +74,10 @@ locals {
 }
 
 resource "aws_instance" "windows" {
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
   ami                         = data.aws_ami.windows_server_2022.id
   instance_type               = var.instance_type
   subnet_id                   = var.subnet_id

@@ -17,3 +17,4 @@ ssm-*.json
 win-module.txt
 *.tfplan
 tfplan
+*.tfstate.*

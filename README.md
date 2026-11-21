@@ -77,40 +77,107 @@ optional decoys:
 - **Explicit exposure.** Listener ingress exists only for enabled decoys and only for CIDRs you list in `honeypot_ingress_cidrs` (default: empty).
 - **No public management ports.** There are no SSH or RDP admin rules. AWS Systems Manager is the intended admin path.
 - **Centralized logging.** CloudWatch Logs collects decoy telemetry (7-day default retention) and CloudTrail records AWS management events.
+- **Short-lived GitHub deployments.** GitHub Actions assumes separate plan and apply roles through AWS IAM OIDC federation, with no long-lived AWS access keys in workflows.
 - **Analyst-led investigation.** Nine saved CloudWatch Logs Insights queries support manual hunting. They are not scheduled detections or alert rules.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  Internet((Internet))
-  subgraph AWS["AWS account and selected region"]
-    subgraph Linux["Isolated Linux VPC"]
-      Cowrie["Optional EC2<br/>Cowrie SSH decoy :22"]
-    end
-    subgraph WebVPC["Isolated web VPC"]
-      Web["Optional EC2<br/>Flask decoy :80"]
-    end
-    subgraph WindowsVPC["Isolated Windows VPC"]
-      Windows["Optional EC2<br/>RDP decoy :3389<br/>SMB :445 optional"]
-    end
-    Logs[("CloudWatch Logs<br/>7-day default retention")]
-    Queries["Saved Logs Insights queries"]
-    Alarms["Heartbeat and EC2 status alarms"]
-    Trail["CloudTrail management events"]
-    Audit[("Private S3 audit bucket")]
-    Budget["AWS Budget notifications"]
-    Optional["Optional GuardDuty<br/>Security Hub / Config"]
+  Internet((Public Internet))
+
+  subgraph CICD["GitHub Actions / Deployment"]
+    direction TB
+    Repo["Terraform-Honeypot_Lab"]
+    PlanEnv["terraform-plan environment"]
+    ApplyEnv["terraform-apply / terraform-destroy"]
   end
-  Internet --> Cowrie
-  Internet --> Web
-  Internet --> Windows
-  Cowrie --> Logs
-  Web --> Logs
-  Windows --> Logs
+
+  subgraph Identity["AWS Identity Federation"]
+    direction TB
+    OIDC["IAM OIDC Provider<br/>token.actions.githubusercontent.com"]
+    PlanRole["Plan Role<br/>ReadOnly + state lock access"]
+    ApplyRole["Apply Role<br/>Scoped lab permissions"]
+  end
+
+  subgraph AWS["AWS Account / us-east-1"]
+    direction TB
+
+    subgraph StateLayer["State and Governance"]
+      direction TB
+      State[("S3 Remote State<br/>honeypot-soc/dev.tfstate")]
+      Audit[("Private S3 Audit Bucket")]
+      Trail["CloudTrail"]
+      Budget["AWS Budget"]
+      Optional["GuardDuty / Security Hub / Config"]
+    end
+
+    subgraph Honeypots["Isolated Honeypot VPCs"]
+      direction TB
+      subgraph LinuxVPC["Linux VPC"]
+        Cowrie["Cowrie EC2<br/>TCP 22"]
+      end
+      subgraph WebVPC["Web VPC"]
+        Web["Flask EC2<br/>TCP 80"]
+      end
+      subgraph WindowsVPC["Windows VPC"]
+        Windows["Windows EC2<br/>RDP 3389 / SMB 445"]
+      end
+    end
+
+    subgraph Monitoring["Detection and Operations"]
+      direction TB
+      Logs[("CloudWatch Logs")]
+      Queries["Logs Insights Queries"]
+      Alarms["EC2 and Heartbeat Alarms"]
+    end
+  end
+
+  Internet -->|CIDR-gated listeners| Cowrie
+  Internet -->|CIDR-gated listeners| Web
+  Internet -->|CIDR-gated listeners| Windows
+
+  Repo --> PlanEnv
+  Repo --> ApplyEnv
+  PlanEnv -->|Environment OIDC claim| OIDC
+  ApplyEnv -->|Environment OIDC claim| OIDC
+  OIDC --> PlanRole
+  OIDC --> ApplyRole
+  PlanRole -->|Plan and lock| State
+  ApplyRole -->|Provision resources| AWS
+
+  Cowrie -->|Cowrie / host logs| Logs
+  Web -->|Access / honeytoken logs| Logs
+  Windows -->|Security / Sysmon / PowerShell| Logs
   Logs --> Queries
   Logs --> Alarms
   Trail --> Audit
+  Optional -.-> Logs
+  Budget -.-> Repo
+
+  classDef external fill:#f8fafc,stroke:#64748b,stroke-width:2px,color:#0f172a
+  classDef ci fill:#eff6ff,stroke:#2563eb,stroke-width:2px,color:#172554
+  classDef identity fill:#f5f3ff,stroke:#7c3aed,stroke-width:2px,color:#2e1065
+  classDef compute fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#431407
+  classDef data fill:#ecfdf5,stroke:#059669,stroke-width:2px,color:#064e3b
+  classDef operations fill:#fefce8,stroke:#ca8a04,stroke-width:2px,color:#422006
+
+  class Internet external
+  class Repo,PlanEnv,ApplyEnv ci
+  class OIDC,PlanRole,ApplyRole identity
+  class Cowrie,Web,Windows compute
+  class State,Audit,Logs data
+  class Trail,Budget,Optional,Queries,Alarms operations
+
+  style CICD fill:#f8fafc,stroke:#94a3b8,stroke-width:1px
+  style Identity fill:#faf5ff,stroke:#a78bfa,stroke-width:1px
+  style AWS fill:#f8fafc,stroke:#64748b,stroke-width:2px
+  style StateLayer fill:#f0fdf4,stroke:#86efac,stroke-width:1px
+  style Honeypots fill:#fffaf5,stroke:#fdba74,stroke-width:1px
+  style Monitoring fill:#fefce8,stroke:#fde047,stroke-width:1px
+  style LinuxVPC fill:#ffffff,stroke:#fdba74,stroke-width:1px
+  style WebVPC fill:#ffffff,stroke:#fdba74,stroke-width:1px
+  style WindowsVPC fill:#ffffff,stroke:#fdba74,stroke-width:1px
 ```
 
 ### Design decisions
@@ -122,6 +189,8 @@ flowchart LR
 | Egress limited to TCP 443 | Lets instances reach CloudWatch and Systems Manager | Destinations are **not** restricted to AWS endpoints, so arbitrary HTTPS egress remains a containment risk |
 | CIDR-gated listeners | Ingress rules are created only when a decoy is enabled and CIDRs are set | Broad CIDRs mean Internet-wide exposure |
 | Systems Manager for admin | Attaches `AmazonSSMManagedInstanceCore` when enabled | Requires SSM to be enabled |
+| GitHub Actions OIDC roles | Separate plan and apply identities use environment claims and short-lived credentials | Trust conditions and review environment protection still require external AWS/GitHub configuration |
+| Separate OIDC Terraform state | `terraform/github-oidc/` uses local state and does not share the honeypot state | Local state must be protected and handled separately from CI state |
 
 ### Defaults
 
@@ -471,7 +540,11 @@ The state bucket is created by the separate `terraform/bootstrap-state/` stack w
 
 - EC2 instance roles grant CloudWatch log-delivery permissions for the configured log groups.
 - When Systems Manager is enabled, the instance profile attaches `AmazonSSMManagedInstanceCore`.
-- GitHub deployment roles and their policies are configured separately and should be reviewed for least privilege.
+- The separate [`terraform/github-oidc/`](terraform/github-oidc/) root module provisions the GitHub Actions OIDC provider and two deployment roles:
+  - `honeypot-soc-dev-github-plan` trusts the `terraform-plan` environment and receives read-only plus state and lock-file access.
+  - `honeypot-soc-dev-github-apply` trusts the `terraform-apply` and `terraform-destroy` environments and receives the scoped apply policy.
+- The OIDC module deliberately uses local state and does not share the honeypot remote-state key.
+- Neither deployment role uses long-lived AWS access keys. GitHub environments, branch protection, trust claims and the applied policy must still be reviewed outside this repository.
 
 ## CI/CD
 
@@ -488,6 +561,11 @@ no long-lived access keys).
 
 Normal apply plans are guarded against resource deletions and replacements;
 destruction uses its own plan/apply flow.
+
+The [`terraform-plan-apply.yml`](.github/workflows/terraform-plan-apply.yml)
+workflow can print selected OIDC claims for troubleshooting before it assumes
+the plan role. It decodes the claims locally in the runner and never prints the
+JWT itself.
 
 **Before using the workflows**, configure GitHub environment reviewers, branch
 restrictions, AWS OIDC trust policies, and appropriately scoped plan/apply IAM
@@ -520,6 +598,7 @@ Config off, no NAT Gateway or load balancer, and a 7-day CloudWatch retention.
 | The 4625 regex parsed `102.88.166.24` in three five-minute bins and reported `Showing 3 of 15 matched` | Confirms XML parsing and aggregation across 15 matched failed logons in 07:10, 07:20 and 07:30 UTC bins |
 | The `windows-rdp-brute-force` threshold returned exactly two rows: 07:30 with 9 failures and 07:50 with 8 failures | Confirms real-event parsing, grouping and the `>= 5` threshold for source `102.88.166.24`; not an alert or an ongoing-detection test |
 | An SSM account-lifecycle test created `honeytest`, added it to Administrators, removed it, and deleted it | Confirms all four `net` commands completed; Security Event IDs 4720, 4732, 4733, and 4726 should correspond to the lifecycle, but this is not a verified CloudWatch event record |
+| The `terraform/github-oidc/` module was formatted and initialized successfully, and `terraform validate` passed | AWS provider 6.73.0 was selected; no apply or AWS mutation was performed and the IAM resources are not yet deployed |
 | Repository contains nine saved Logs Insights query definitions | Query output has not been demonstrated by this evidence |
 | Windows telemetry is configured in Terraform and bootstrap files | Windows query results, broader event-channel coverage, and XML parsing across the configured channels still require validation |
 | Workflows contain OIDC and plan-provenance checks | External AWS IAM trust, GitHub environments, and account-specific cost/exposure are not verified here |
@@ -529,6 +608,7 @@ Config off, no NAT Gateway or load balancer, and a 7-day CloudWatch retention.
 ```text
 terraform/
   bootstrap-state/       # Separate S3 backend bucket bootstrap
+  github-oidc/           # Separate local-state OIDC provider and deployment roles
   environments/dev/      # Development composition and example variables
   modules/
     networking/          # Isolated VPCs, routes, security groups

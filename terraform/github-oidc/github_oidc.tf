@@ -14,7 +14,7 @@ variable "plan_subs" {
   description = "OIDC sub claims allowed to assume the plan role (terraform-destroy.yml and terraform-plan-apply.yml)"
   type        = list(string)
   default = [
-    "repo:Bigsnack7/Terraform-Honeypot_Lab:environment:terraform-plan",
+    "repo:Bigsnack7@287245995/Terraform-Honeypot_Lab@1463093635:environment:terraform-plan",
   ]
 }
 
@@ -22,8 +22,8 @@ variable "apply_subs" {
   description = "OIDC sub claims allowed to assume the apply role (terraform-apply.yml and terraform-destroy-apply.yml)"
   type        = list(string)
   default = [
-    "repo:Bigsnack7/Terraform-Honeypot_Lab:environment:terraform-apply",
-    "repo:Bigsnack7/Terraform-Honeypot_Lab:environment:terraform-destroy",
+    "repo:Bigsnack7@287245995/Terraform-Honeypot_Lab@1463093635:environment:terraform-apply",
+    "repo:Bigsnack7@287245995/Terraform-Honeypot_Lab@1463093635:environment:terraform-destroy",
   ]
 }
 

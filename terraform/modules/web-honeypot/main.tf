@@ -4,7 +4,7 @@ data "aws_ssm_parameter" "amazon_linux_2023" {
 
 resource "aws_instance" "web" {
   lifecycle {
-    ignore_changes = [ami]
+    ignore_changes = [ami, user_data]
   }
 
   ami                         = data.aws_ssm_parameter.amazon_linux_2023.value

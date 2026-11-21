@@ -75,7 +75,7 @@ locals {
 
 resource "aws_instance" "windows" {
   lifecycle {
-    ignore_changes = [ami]
+    ignore_changes = [ami, user_data]
   }
 
   ami                         = data.aws_ami.windows_server_2022.id

@@ -7,7 +7,7 @@ variable "github_repo" {
   default     = "Bigsnack7/Terraform-Honeypot_Lab"
 }
 
-# Jobs that declare `environment: NAME` get sub = repo:OWNER/REPO:environment:NAME
+# Jobs that declare `environment: NAME` get sub = repo:OWNER@<repo-id>/REPO@<environment-id>:environment:NAME
 # (no branch in the claim), so branch protection must be enforced on the GitHub
 # environment itself (deployment branches + required reviewers).
 variable "plan_subs" {

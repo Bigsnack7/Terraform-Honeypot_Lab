@@ -1,7 +1,8 @@
 # Terraform Honeypot Lab
 
-**Isolated, opt-in AWS honeypots with centralized logging, audit trails, and analyst-ready investigation queries, all provisioned with Terraform.**
+**Isolated, opt-in AWS honeypots with centralized logging, audit trails, and analyst-ready investigation queries, all provisioned with Terraform and deployed through OIDC-authenticated GitHub Actions.**
 
+![Terraform Plan](https://github.com/Bigsnack7/Terraform-Honeypot_Lab/actions/workflows/terraform-plan-apply.yml/badge.svg)
 ![Terraform](https://img.shields.io/badge/Terraform-1.10%2B-7B42BC?logo=terraform&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-EC2%20%7C%20CloudWatch%20%7C%20CloudTrail-FF9900?logo=amazonaws&logoColor=white)
 ![Status](https://img.shields.io/badge/status-Linux%2C%20web%20and%20Windows%20telemetry-2ea44f)
@@ -9,33 +10,19 @@
 `Cloud Security` · `AWS` · `Terraform` · `Infrastructure as Code` · `SOC Engineering` · `Detection Engineering`
 
 > [!WARNING]
-> **Deployment and test status:** The operator reports that the Linux Cowrie, web,
-> and Windows decoys are deployed and enabled. A supplied
-> [EC2 screenshot](docs/deployment-evidence/ec2-instances-running.png) shows three
-> instances Running with 3/3 status checks; the Name column is truncated. In a
-> controlled Linux SSH session, Cowrie events were observed in
-> `/honeypot/dev/linux/cowrie` from connection through session close. A separate
-> controlled web form submission appears in `/honeypot/dev/web/access` with the
-> expected POST, field-name, credential-submission, and honeytoken metadata. These
-> tests verify the event paths for those requests only. Three healthy Windows
-> heartbeat events, including two scheduled-task runs, were also observed in
-> CloudWatch. On the rebuilt, Terraform-created Windows instance, Windows Security
-> and Sysmon events were also observed in CloudWatch, including Sysmon Event IDs 1,
-> 3, 11, and 22. These samples verify the reported event paths, not saved-query
-> results or ongoing health. Three controlled RDP failed-logon attempts were then
-> confirmed end to end: Windows Security Event ID 4625 arrived in CloudWatch at
-> 07:13:50, 07:14:00 and 07:14:08 UTC with source address 102.88.166.24.
-> This validates RDP ingress, the allow-list, Security-channel collection, the
-> CloudWatch Agent and XML delivery for the attempts. The same 4625 pipeline was
-> later validated through the `windows-rdp-brute-force` Logs Insights query:
-> the `>= 5` threshold returned two bins, 07:30 with 9 failures and 07:50 with
-> 8 failures, both from `102.88.166.24`.
->
 > **This lab can cost money and expose hosts to the internet.** EC2, EBS, public
 > IPv4, log ingestion and storage, S3, alarms, data transfer, and optional
 > security services all bill, and Free Tier eligibility depends on your account.
 > The AWS Budget sends alerts; it does **not** cap spending. Review the exact plan,
 > exposure, and cost before you apply anything.
+
+> [!NOTE]
+> **Deployment and test status.** The operator reports that the Linux Cowrie, web,
+> and Windows decoys are deployed and enabled. Controlled tests confirmed the
+> event paths for each decoy and a working RDP failed-logon detection query. The
+> evidence is point-in-time and scoped narrowly; see
+> [Validation status](#validation-status) for exactly what each test does and does
+> not show.
 
 ## Contents
 
@@ -44,14 +31,10 @@
 - [Quick start](#quick-start)
 - [Honeypot components](#honeypot-components)
 - [Detection engineering](#detection-engineering)
-- [Linux Cowrie runtime evidence](#linux-cowrie-runtime-evidence)
-- [Web honeypot runtime evidence](#web-honeypot-runtime-evidence)
-- [Windows heartbeat runtime evidence](#windows-heartbeat-runtime-evidence)
-- [Windows Security and Sysmon runtime evidence](#windows-security-and-sysmon-runtime-evidence)
-- [Windows failed RDP logon evidence](#windows-failed-rdp-logon-evidence)
-- [Windows ingress allow-list validation](#windows-ingress-allow-list-validation)
+- [Runtime evidence](#runtime-evidence)
 - [Security design](#security-design)
 - [CI/CD](#cicd)
+- [Operational notes](#operational-notes)
 - [Cost management](#cost-management)
 - [Validation status](#validation-status)
 - [Repository layout](#repository-layout)
@@ -72,12 +55,13 @@ optional decoys:
 
 - **Opt-in starter configuration.** The example variables leave honeypot instances
   and optional security services disabled. The deployed dev environment is reported
-  enabled; see the deployment and runtime evidence below.
+  enabled.
 - **Isolated.** Each decoy gets its own VPC, subnet, and security group, with no peering between them.
 - **Explicit exposure.** Listener ingress exists only for enabled decoys and only for CIDRs you list in `honeypot_ingress_cidrs` (default: empty).
 - **No public management ports.** There are no SSH or RDP admin rules. AWS Systems Manager is the intended admin path.
 - **Centralized logging.** CloudWatch Logs collects decoy telemetry (7-day default retention) and CloudTrail records AWS management events.
 - **Short-lived GitHub deployments.** GitHub Actions assumes separate plan and apply roles through AWS IAM OIDC federation, with no long-lived AWS access keys in workflows.
+- **Guarded changes.** Normal plans that would delete or replace a resource are blocked; destruction goes through its own reviewed plan/apply flow.
 - **Analyst-led investigation.** Nine saved CloudWatch Logs Insights queries support manual hunting. They are not scheduled detections or alert rules.
 
 ## Architecture
@@ -189,8 +173,9 @@ flowchart LR
 | Egress limited to TCP 443 | Lets instances reach CloudWatch and Systems Manager | Destinations are **not** restricted to AWS endpoints, so arbitrary HTTPS egress remains a containment risk |
 | CIDR-gated listeners | Ingress rules are created only when a decoy is enabled and CIDRs are set | Broad CIDRs mean Internet-wide exposure |
 | Systems Manager for admin | Attaches `AmazonSSMManagedInstanceCore` when enabled | Requires SSM to be enabled |
-| GitHub Actions OIDC roles | Separate plan and apply identities use environment claims and short-lived credentials | Trust conditions and review environment protection still require external AWS/GitHub configuration |
-| Separate OIDC Terraform state | `terraform/github-oidc/` uses local state and does not share the honeypot state | Local state must be protected and handled separately from CI state |
+| GitHub Actions OIDC roles | Separate plan and apply identities use environment claims and short-lived credentials | Trust conditions and environment protection still require external AWS/GitHub configuration |
+| Separate OIDC Terraform state | `terraform/github-oidc/` uses local state and does not share the honeypot state | Local state must be protected and backed up separately from CI state |
+| Ignore `ami` and `user_data` drift on instances | Prevents a new AMI or a rendering difference from replacing running decoys | Bootstrap-script edits and newer AMIs only reach an instance after a deliberate rebuild |
 
 ### Defaults
 
@@ -205,9 +190,7 @@ flowchart LR
 | GuardDuty, Security Hub, AWS Config | Optional findings and configuration recording | Disabled |
 | AWS Budget | Monthly spend notifications | Enabled, USD 5 threshold |
 
-These are starter values, not a description of the deployed dev environment. The
-operator reports all three honeypot instances enabled; the EC2 screenshot linked
-above shows three running instances.
+These are starter values, not a description of the deployed dev environment.
 
 ## Quick start
 
@@ -254,7 +237,28 @@ terraform show -no-color tfplan
 Review the full plan, exposure, and cost before considering an apply, and apply
 only the exact plan you reviewed.
 
-### 3. Tear down
+### 3. (Optional) Set up GitHub Actions deployment
+
+Deploying through GitHub needs the OIDC provider and the two roles first. They live
+in a separate root module with its own local state:
+
+```powershell
+terraform -chdir=terraform\github-oidc init
+terraform -chdir=terraform\github-oidc plan -var="state_bucket_name=<your-state-bucket>"
+# Apply only after reviewing the plan.
+```
+
+Then create the GitHub environments `terraform-plan`, `terraform-apply` and
+`terraform-destroy`, and set these repository variables:
+
+| Variable | Value |
+|---|---|
+| `AWS_PLAN_ROLE_ARN` | ARN of the plan role |
+| `AWS_APPLY_ROLE_ARN` | ARN of the apply role |
+| `TF_STATE_BUCKET` | Name of the remote-state bucket |
+| `TF_STATE_REGION` | Region of the remote-state bucket |
+
+### 4. Tear down
 
 ```powershell
 terraform plan -destroy -var-file=environments\dev\terraform.tfvars -out=tfplan
@@ -269,7 +273,8 @@ public IPv4 usage, and your AWS bill.
 
 > [!CAUTION]
 > Never commit generated `.tfvars` files, backend configuration containing private
-> details, state files, plans, credentials, or account-specific sensitive data.
+> details, state files (including `terraform/github-oidc/terraform.tfstate`),
+> plans, credentials, or account-specific sensitive data.
 
 ## Honeypot components
 
@@ -294,13 +299,6 @@ Exposes an RDP decoy only when enabled and allowed by explicit CIDRs. SMB is a
 separate opt-in. This is the most expensive component because of higher compute and
 licensing costs.
 
-The [Windows heartbeat evidence](#windows-heartbeat-runtime-evidence) confirms that
-the health task ran on schedule and its healthy status reached CloudWatch. That
-heartbeat evidence alone does not demonstrate full Windows Security, System, Sysmon,
-or PowerShell event coverage; separate [Windows Security and Sysmon runtime
-evidence](#windows-security-and-sysmon-runtime-evidence) documents the observed
-Security and Sysmon events.
-
 **Telemetry when enabled:**
 
 - Windows Security and System event collection
@@ -312,8 +310,7 @@ Security and Sysmon events.
 `1.300074.1b2005`. Bootstrap checks the expected SHA-256
 (`3891c26f477cc47cf1b3965b18ffb25532b67e4534b60f692cb6605b6bee1577`) before
 installing. The package's Authenticode signature was reported valid, signed by
-Amazon Web Services, Inc. This verifies the package only; it is not evidence of a
-Windows deployment.
+Amazon Web Services, Inc.
 
 > [!NOTE]
 > Public listener exposure is intentional for every decoy. Avoid broad CIDRs unless
@@ -332,41 +329,38 @@ incidents. Run them in CloudWatch Logs Insights over a time range you choose.
 | [`cowrie-command-execution.sql`](detections/cloudwatch-logs-insights/cowrie-command-execution.sql) | Cowrie JSON | Commands entered in shell sessions |
 | [`cowrie-post-exploitation.sql`](detections/cloudwatch-logs-insights/cowrie-post-exploitation.sql) | Cowrie JSON | Download/execute, persistence, evasion, credential-file patterns |
 | [`web-path-scanning.sql`](detections/cloudwatch-logs-insights/web-path-scanning.sql) | Flask access JSON | Repeated honeytoken and 404 path probes |
-| [`windows-rdp-brute-force.sql`](detections/cloudwatch-logs-insights/windows-rdp-brute-force.sql) | Windows Security XML | Failed logons with a parsed source IP |
+| [`windows-rdp-brute-force.sql`](detections/cloudwatch-logs-insights/windows-rdp-brute-force.sql) | Windows Security XML | Failed logons with a parsed source IP (≥ 5 per 5 minutes) |
 | [`windows-suspicious-powershell.sql`](detections/cloudwatch-logs-insights/windows-suspicious-powershell.sql) | PowerShell and Sysmon XML | Suspicious PowerShell and evasion strings |
 | [`windows-privilege-escalation.sql`](detections/cloudwatch-logs-insights/windows-privilege-escalation.sql) | Windows Security/System XML | Special privileges, service installs, scheduled tasks |
 | [`windows-event-log-clearing.sql`](detections/cloudwatch-logs-insights/windows-event-log-clearing.sql) | Windows Security/System XML | Event-log clearing and related commands |
 | [`windows-admin-activity.sql`](detections/cloudwatch-logs-insights/windows-admin-activity.sql) | Windows Security XML | Privileged logons, account/group changes, lockouts, audit-policy changes |
 
 The Cowrie and web queries expect JSON fields emitted by those applications.
-Windows queries parse XML event records inside CloudWatch Agent log messages. The
-queries and configured event sources are consistent at the repository level. The
-captured Cowrie session and web POST event verify delivery for those test requests,
-and Windows heartbeat, Security, and Sysmon evidence verifies delivery for the
-reported samples. These observations do not verify saved query results, broad event
-coverage, or ongoing health. Windows query results and XML parsing across the
-configured event channels still need runtime validation.
+Windows queries parse XML event records inside CloudWatch Agent log messages. Only
+the `windows-rdp-brute-force` query has been validated against real events; results
+for the other queries and XML parsing across the remaining event channels still
+need runtime validation.
 
 See the [query guide](detections/cloudwatch-logs-insights/README.md) for details and
 limitations. Restrict access to Cowrie logs, since attempted credentials may be
 recorded, and keep retention short.
 
-## Linux Cowrie runtime evidence
+## Runtime evidence
 
-The supplied CloudWatch output captures one controlled SSH session dated
-2026-11-20 (UTC). Its event chain includes `cowrie.session.connect`,
-`cowrie.client.version`, `cowrie.client.kex`, `cowrie.login.success`,
-`cowrie.client.size`, `cowrie.session.params`, four `cowrie.command.input` events,
-`cowrie.log.closed`, and `cowrie.session.closed`. The associated terminal view shows
-the commands `whoami`, `uname -a`, `ls`, and `exit`.
+All screenshots are redacted. Each test below is scoped to the specific requests
+shown; none demonstrates sustained health or complete coverage.
 
-This evidence supports that Cowrie accepted the test connection, recorded the
-session events, and that the CloudWatch Agent delivered the Cowrie JSON log for
-this session to `/honeypot/dev/linux/cowrie`. It also demonstrates a successful
-connection from the configured test source. It is not a negative test of other
-source CIDRs, proof that every allow-list edge case works, or a test of alarms and
-saved query output. The screenshots have identifying fields and submitted
-credentials redacted.
+### Linux Cowrie runtime evidence
+
+One controlled SSH session dated 2026-11-20 (UTC) produced the full event chain:
+`cowrie.session.connect`, `cowrie.client.version`, `cowrie.client.kex`,
+`cowrie.login.success`, `cowrie.client.size`, `cowrie.session.params`, four
+`cowrie.command.input` events, `cowrie.log.closed`, and `cowrie.session.closed`.
+The terminal view shows the commands `whoami`, `uname -a`, `ls`, and `exit`.
+
+This supports that Cowrie accepted the test connection, recorded the session, and
+that the CloudWatch Agent delivered the log to `/honeypot/dev/linux/cowrie`. It is
+not a negative test of other source CIDRs or a test of alarms and saved query output.
 
 **Interactive Cowrie session**
 
@@ -380,108 +374,77 @@ credentials redacted.
 
 ![Redacted CloudWatch event names for login, commands, TTY close, and session close](docs/deployment-evidence/cowrie-cloudwatch-session-events-redacted.png)
 
-## Web honeypot runtime evidence
+### Web honeypot runtime evidence
 
-The supplied screenshot shows the WordPress-style login form and a controlled POST
-to `/wp-login.php` observed in the `/honeypot/dev/web/access` CloudWatch log group.
-The event records `method: POST`, `form_fields: ["log", "pwd"]`,
+A controlled POST to `/wp-login.php` appears in `/honeypot/dev/web/access`. The
+event records `method: POST`, `form_fields: ["log", "pwd"]`,
 `credential_submission: true`, and the `wordpress_admin_probe` honeytoken. The log
-records submitted field names, **not** the submitted values, so credentials are not
-included in this evidence.
+records field names, **not** submitted values, so no credentials appear in this
+evidence.
 
-This confirms the form-submission event path for the demonstrated request only. It
-does not establish sustained health, behavior for every route or request type,
-saved-query results, or any Windows behavior (see the Windows evidence below). The
-screenshot is a sanitized composite:
-request values and identifying network/instance details are omitted.
+This confirms the form-submission event path for the demonstrated request only.
 
 ![Sanitized web honeypot form and CloudWatch POST event](docs/deployment-evidence/web-cloudwatch-post-redacted.png)
 
-## Windows heartbeat runtime evidence
+### Windows heartbeat runtime evidence
 
-The supplied CloudWatch output contains three `windows-honeypot` events with
-`status: healthy` in `/honeypot/dev/health/windows` on 2026-11-20 (UTC). One was
-manually triggered at about 12:08 UTC; the other two were generated by the scheduled
-task at about 12:11 and 12:16 UTC. Each event arrived in CloudWatch approximately
-five seconds after the timestamp recorded in the heartbeat payload.
+Three `windows-honeypot` events with `status: healthy` appear in
+`/honeypot/dev/health/windows` on 2026-11-20 (UTC): one manually triggered at about
+12:08 UTC and two from the scheduled task at about 12:11 and 12:16 UTC. Each arrived
+in CloudWatch roughly five seconds after its payload timestamp.
 
-This confirms the Windows health check ran unattended on the demonstrated schedule
-and that its heartbeat reached CloudWatch promptly for these samples. By itself,
-this heartbeat evidence does not establish continuous health, other Windows event
-collection, or the results of Windows Logs Insights queries. The screenshot omits
-the instance identifier.
+This confirms the health task ran unattended on the demonstrated schedule. It does
+not establish continuous health or other Windows event collection.
 
 ![Redacted Windows healthy heartbeat events in CloudWatch](docs/deployment-evidence/windows-heartbeat-cloudwatch-redacted.png)
 
-## Windows Security and Sysmon runtime evidence
+### Windows Security and Sysmon runtime evidence
 
 The operator reports that the rebuilt Windows instance was created by Terraform
 without manual patching. CloudWatch received Windows Security and Sysmon telemetry;
-the observed Sysmon event IDs include 1 (Process Create), 3 (Network Connection),
-11 (File Create), and 22 (DNS Query). The Event ID 1 stream included creation of
-`write-health.ps1` at 13:17:53 UTC, and the supplied screenshot shows a Sysmon
-Event ID 3 network-connection event at 13:18:46 UTC.
+observed Sysmon event IDs include 1 (Process Create), 3 (Network Connection),
+11 (File Create), and 22 (DNS Query). Event ID 1 included creation of
+`write-health.ps1` at 13:17:53 UTC, and the screenshot shows an Event ID 3 at
+13:18:46 UTC.
 
-This evidence supports that the Terraform-built instance and CloudWatch Agent
-delivered the demonstrated health and Windows event samples, including activity
-from the heartbeat script. It does not establish complete event coverage, validate
-the saved Windows Logs Insights query results, or prove ongoing health. The
-sanitized evidence summary distinguishes the Event ID 3 visible in the screenshot
-from the additional event IDs reported in the accompanying validation. Instance,
-host, and network identifiers are omitted.
+This supports delivery for the demonstrated samples. It does not establish complete
+event coverage or ongoing health.
 
 ![Sanitized Windows Sysmon event evidence summary](docs/deployment-evidence/windows-sysmon-events-redacted.png)
 
 ### Windows ingress allow-list validation
 
-The Windows security group was inspected after configuring the RDP and SMB
-listener CIDRs. The AWS output reports both TCP 3389 and TCP 445 with
-`102.88.166.24/32` as the ingress source.
-
-This confirms that only the demonstrated source CIDR was present for each listener
-rule at the time of inspection. It also confirms that controlled connection attempts
-from `102.88.166.24/32` could reach the Windows host because the source had an
-explicit allow-list entry. It does not demonstrate which application responded, prove
-successful RDP or SMB authentication, or validate ingress behavior from other source
-addresses. The security-group identifier and command details are omitted from the
-sanitized evidence.
+The Windows security group shows both TCP 3389 and TCP 445 with a single `/32`
+source as the ingress CIDR. This confirms that only the allow-listed source was
+present at inspection time and why controlled attempts from it could reach the host.
+It does not prove successful RDP or SMB authentication or test other source
+addresses.
 
 ![Redacted Windows security-group rules for TCP 3389 and 445](docs/deployment-evidence/windows-ingress-allow-list-redacted.png)
 
 ### Windows failed RDP logon evidence
 
-Three controlled `mstsc` attempts generated Windows Security Event ID 4625
-(An account failed to log on). CloudWatch logs received the three events at
-07:13:50, 07:14:00 and 07:14:08 UTC. The XML event records identify the
-workstation `OLUDEMI24`, the failed account `fakeadmin`, logon type 3 (network),
-NTLM authentication and source network address `102.88.166.24`.
+Three controlled `mstsc` attempts generated Windows Security Event ID 4625 (An
+account failed to log on). CloudWatch received them at 07:13:50, 07:14:00 and
+07:14:08 UTC. The XML records show logon type 3 (network), NTLM authentication, a
+failed account `fakeadmin`, and the test source address.
 
-Together with the confirmed TCP 3389 allow-list rule, this demonstrates the full
-sample path:
+The sample path is:
 
 `mstsc` attempt → TCP 3389 allow-list entry → Windows Security 4625 event →
 CloudWatch Agent → XML record in `/honeypot/dev/windows/security`.
 
-The evidence confirms failed-logon collection for these specific attempts. It does
-not prove successful RDP authentication or ongoing logon coverage. The saved RDP
-brute-force query does, however, require and apply a threshold of five failures
-from the same source within a five-minute window.
+The `windows-rdp-brute-force` query was then validated in CloudWatch Logs Insights:
 
-The fixed XML regex was also validated directly in CloudWatch Logs Insights.
-It parsed `src_ip` from the single-quoted XML and returned one source
-(`102.88.166.24`; truncated visually in the table) in three five-minute bins:
-07:10, 07:20 and 07:30 UTC. The status reported `Showing 3 of 15 matched`,
-meaning three displayed source/bin rows represented 15 matched failed-logon
-records in the selected query range. This validates the source-IP parsing and
-five-minute aggregation even though the screenshot's table labels the IP column
-with an ellipsis.
+- The fixed XML regex parsed `src_ip` from the single-quoted XML and returned one
+  source in three five-minute bins (07:10, 07:20, 07:30 UTC). The status showed
+  `Showing 3 of 15 matched`.
+- With `filter failures >= 5` enabled, the query scanned 223 Security records and
+  returned exactly two rows: 07:30 UTC with 9 failures and 07:50 UTC with 8
+  failures, both from the test source.
 
-With the `filter failures >= 5` threshold enabled, the query was validated against
-223 scanned Security records. It returned exactly two rows: 07:30 UTC with 9
-failures and 07:50 UTC with 8 failures. Both rows are from
-`102.88.166.24`, which is shown in full in the chart legend. This confirms that
-XML parsing, source grouping and the five-failure threshold all work on real
-4625 events.
+This confirms XML parsing, source grouping and the five-failure threshold on real
+4625 events. It is not an alert or an ongoing-detection test.
 
 **CloudWatch 4625 XML summary**
 
@@ -505,22 +468,18 @@ XML parsing, source grouping and the five-failure threshold all work on real
 
 ### Windows account lifecycle test
 
-The supplied PowerShell/SSM transcript shows a controlled test account lifecycle:
+A PowerShell/SSM transcript shows a controlled test-account lifecycle:
 
 1. `net user honeytest "<test-password>" /add` created the local account.
-2. `net localgroup Administrators honeytest /add` added the account to the local
-   Administrators group.
-3. `net localgroup Administrators honeytest /delete` removed the account from the
-   Administrators group.
-4. `net user honeytest /delete` deleted the local account.
+2. `net localgroup Administrators honeytest /add` added it to the local Administrators group.
+3. `net localgroup Administrators honeytest /delete` removed it from the group.
+4. `net user honeytest /delete` deleted the account.
 
 The SSM invocation reported `Success` for all four commands, and the temporary
-parameter file `ssm-params.json` was deleted. The expected Windows Security event
-sequence is Event ID 4720 (user created), 4732 (member added to a security-enabled
-local group), 4733 (member removed from a security-enabled local group), and 4726
-(user deleted). This confirms the command execution on the test instance; it does
-not by itself confirm that all four Security events reached CloudWatch or that the
-Windows account-activity Logs Insights query produced matching results.
+parameter file was deleted. The expected Security events are 4720 (user created),
+4732 (member added to a local group), 4733 (member removed), and 4726 (user
+deleted). This confirms the commands ran; it does not confirm that all four events
+reached CloudWatch or that the Windows admin-activity query matched them.
 
 ![Sanitized PowerShell and SSM account lifecycle evidence](docs/deployment-evidence/windows-account-lifecycle-ssm-redacted.png)
 
@@ -536,15 +495,28 @@ The state bucket is created by the separate `terraform/bootstrap-state/` stack w
 - Native S3 state locking (`use_lockfile`)
 - `prevent_destroy`, so teardown never removes it
 
-### IAM
+### IAM and GitHub OIDC
 
 - EC2 instance roles grant CloudWatch log-delivery permissions for the configured log groups.
 - When Systems Manager is enabled, the instance profile attaches `AmazonSSMManagedInstanceCore`.
 - The separate [`terraform/github-oidc/`](terraform/github-oidc/) root module provisions the GitHub Actions OIDC provider and two deployment roles:
   - `honeypot-soc-dev-github-plan` trusts the `terraform-plan` environment and receives read-only plus state and lock-file access.
   - `honeypot-soc-dev-github-apply` trusts the `terraform-apply` and `terraform-destroy` environments and receives the scoped apply policy.
-- The OIDC module deliberately uses local state and does not share the honeypot remote-state key.
+- The OIDC module deliberately uses local state and does not share the honeypot remote-state key. Back that state file up and keep it out of version control.
 - Neither deployment role uses long-lived AWS access keys. GitHub environments, branch protection, trust claims and the applied policy must still be reviewed outside this repository.
+
+**Trust policy `sub` format.** GitHub now includes the numeric owner and repository
+IDs in the OIDC subject claim:
+
+```text
+repo:OWNER@OWNER_ID/REPO@REPO_ID:environment:NAME
+```
+
+Trust policies written in the older plain `repo:OWNER/REPO:environment:NAME` form
+are rejected with `Not authorized to perform sts:AssumeRoleWithWebIdentity`. The
+ID-based form also means a deleted and recreated repository with the same name
+cannot inherit the trust. If a repository is renamed or transferred, update the
+`plan_subs` and `apply_subs` variables to match.
 
 ## CI/CD
 
@@ -554,7 +526,7 @@ no long-lived access keys).
 | Workflow | Purpose |
 |---|---|
 | [`terraform-ci.yml`](.github/workflows/terraform-ci.yml) | Formatting, backend-free init, validation, plan-guard tests |
-| [`terraform-plan-apply.yml`](.github/workflows/terraform-plan-apply.yml) | Creates a plan artifact for review; does not apply |
+| [`terraform-plan-apply.yml`](.github/workflows/terraform-plan-apply.yml) | Creates a plan artifact for review and fails if the plan contains deletes or replacements; does not apply |
 | [`terraform-apply.yml`](.github/workflows/terraform-apply.yml) | Applies the exact saved plan after confirmation and provenance checks |
 | [`terraform-destroy.yml`](.github/workflows/terraform-destroy.yml) | Creates a separate destroy plan for review |
 | [`terraform-destroy-apply.yml`](.github/workflows/terraform-destroy-apply.yml) | Applies the reviewed destroy plan after confirmation and provenance checks |
@@ -562,14 +534,36 @@ no long-lived access keys).
 Normal apply plans are guarded against resource deletions and replacements;
 destruction uses its own plan/apply flow.
 
-The [`terraform-plan-apply.yml`](.github/workflows/terraform-plan-apply.yml)
-workflow can print selected OIDC claims for troubleshooting before it assumes
-the plan role. It decodes the claims locally in the runner and never prints the
-JWT itself.
-
 **Before using the workflows**, configure GitHub environment reviewers, branch
 restrictions, AWS OIDC trust policies, and appropriately scoped plan/apply IAM
 permissions. Repository validation has not verified these external settings.
+
+## Operational notes
+
+Lessons from running this pipeline, kept here because they are easy to hit again.
+
+**OIDC role assumption fails with "Not authorized".** Compare the token's `sub`
+claim with the role's trust policy character for character. The usual cause is the
+ID-based `sub` format described in [Security design](#iam-and-github-oidc). To see
+the claims, temporarily decode the JWT payload in a workflow step (print claims
+only, never the token), then remove the step.
+
+**Line endings.** The repository enforces LF with `.gitattributes`
+(`* text=auto eol=lf`). Without it, a Windows checkout rendered the `user_data`
+templates with CRLF while the Linux runner rendered LF. Terraform saw different
+strings and planned to replace all three instances. Check a working tree with
+`git ls-files --eol`; every file should show `w/lf`.
+
+**Instance lifecycle.** The honeypot `aws_instance` resources use
+`ignore_changes = [ami, user_data]`. Bootstrap-script edits and newer AMIs do not
+reach running instances until you rebuild them through the protected destroy
+workflow. The plan guard blocks replacements in normal plans, so this is a
+deliberate, reviewed step rather than a surprise.
+
+**Local plans differ from CI.** CI supplies the plan inputs as `TF_VAR_*`
+environment variables and the state bucket at `init`. A local plan without the same
+values prompts for variables and can show different changes, so diagnose from the
+CI log where possible.
 
 ## Cost management
 
@@ -590,18 +584,16 @@ Config off, no NAT Gateway or load balancer, and a 7-day CloudWatch retention.
 | Terraform formatting, validation, backend-free initialization, and plan-guard tests are covered by CI | These static checks do not validate an account-specific plan or deployment |
 | Supplied EC2 screenshot shows three instances Running with 3/3 checks | Names are truncated; this is point-in-time EC2 status evidence |
 | One Cowrie SSH test session appears in the CloudWatch event stream | Confirms the Linux event path for this session only; not continuous health or other source CIDRs |
-| Interactive Cowrie test shows `whoami`, `uname -a`, `ls`, and `exit` | Does not establish production honeypot behavior or validate every attack scenario |
 | One web POST appears in `/honeypot/dev/web/access` with the expected form fields, submission flag, and honeytoken | Confirms the event path for this request; the event contains field names, not submitted values |
 | Three healthy Windows heartbeat events appear in `/honeypot/dev/health/windows`, two from the scheduled task | Confirms the health task ran unattended and heartbeat delivery for these samples; not continuous health |
-| Windows Security and Sysmon events reached CloudWatch on the rebuilt Terraform-created instance; Sysmon Event IDs 1, 3, 11, and 22 were observed | Confirms delivery for the reported samples, including `write-health.ps1` process creation; not complete event coverage or saved-query results |
-| TCP 3389 and TCP 445 both show `102.88.166.24/32` in the Windows security-group output | Confirms the allow-list at inspection time and why test attempts could reach the host; not successful RDP/SMB authentication or negative CIDR testing |
-| The 4625 regex parsed `102.88.166.24` in three five-minute bins and reported `Showing 3 of 15 matched` | Confirms XML parsing and aggregation across 15 matched failed logons in 07:10, 07:20 and 07:30 UTC bins |
-| The `windows-rdp-brute-force` threshold returned exactly two rows: 07:30 with 9 failures and 07:50 with 8 failures | Confirms real-event parsing, grouping and the `>= 5` threshold for source `102.88.166.24`; not an alert or an ongoing-detection test |
-| An SSM account-lifecycle test created `honeytest`, added it to Administrators, removed it, and deleted it | Confirms all four `net` commands completed; Security Event IDs 4720, 4732, 4733, and 4726 should correspond to the lifecycle, but this is not a verified CloudWatch event record |
-| The `terraform/github-oidc/` module was formatted and initialized successfully, and `terraform validate` passed | AWS provider 6.73.0 was selected; no apply or AWS mutation was performed and the IAM resources are not yet deployed |
-| Repository contains nine saved Logs Insights query definitions | Query output has not been demonstrated by this evidence |
-| Windows telemetry is configured in Terraform and bootstrap files | Windows query results, broader event-channel coverage, and XML parsing across the configured channels still require validation |
-| Workflows contain OIDC and plan-provenance checks | External AWS IAM trust, GitHub environments, and account-specific cost/exposure are not verified here |
+| Windows Security and Sysmon events reached CloudWatch on the rebuilt Terraform-created instance; Sysmon Event IDs 1, 3, 11, and 22 were observed | Confirms delivery for the reported samples; not complete event coverage |
+| TCP 3389 and TCP 445 both show the single test `/32` in the Windows security-group output | Confirms the allow-list at inspection time; not successful RDP/SMB authentication or negative CIDR testing |
+| The `windows-rdp-brute-force` query parsed the 4625 source and returned exactly two rows (07:30 with 9 failures, 07:50 with 8) at the `>= 5` threshold | Confirms parsing, grouping and threshold on real events; not an alert or ongoing-detection test |
+| An SSM account-lifecycle test created `honeytest`, added it to Administrators, removed it, and deleted it | Confirms the four `net` commands completed; the matching Security events are not a verified CloudWatch record |
+| The `terraform/github-oidc/` module is applied, and `terraform plan` reports no changes against AWS | The module uses local state; GitHub environment protection and branch rules are not verified here |
+| A manual run of `terraform-plan-apply.yml` assumed the plan role through OIDC, initialized remote state, created a plan, and passed the destructive-change guard | Apply-role runs (`terraform-apply`, `terraform-destroy-apply`) have not been demonstrated by this evidence |
+| Repository contains nine saved Logs Insights query definitions | Only the RDP brute-force query has demonstrated output |
+| Windows telemetry is configured in Terraform and bootstrap files | Other Windows query results and broader event-channel coverage still require validation |
 
 ## Repository layout
 
@@ -618,10 +610,12 @@ terraform/
     windows-honeypot/    # Windows EC2 and telemetry configuration
     monitoring/          # CloudWatch log groups and saved queries
     security/            # CloudTrail, budget, alarms, optional security services
+  scripts/guard-plan.py  # Blocks plans that delete or replace resources
 detections/
   cloudwatch-logs-insights/   # Saved query definitions and query guide
 .github/workflows/            # CI, plan, apply, and destroy workflows
 docs/deployment-evidence/     # Redacted EC2, Linux, web, and Windows runtime evidence
+.gitattributes                # Enforces LF line endings
 ```
 
 Terraform variables control honeypot exposure and optional services. Resources are
@@ -631,10 +625,11 @@ tagged with the project, environment, and security-telemetry classification.
 
 - Designing isolated, intentionally exposed decoy environments in AWS
 - Building reusable Terraform modules
-- Applying IAM roles, instance profiles, and short-lived CI/CD authentication
+- Federating CI/CD to AWS with OIDC, separate plan and apply roles, and short-lived credentials
+- Diagnosing identity, state, and cross-platform rendering problems in a real pipeline
 - Centralizing host and application telemetry with bounded retention
-- Turning investigation goals into version-controlled Logs Insights queries
-- Protecting Terraform state and separating plan, apply, and teardown
+- Turning investigation goals into version-controlled, runtime-validated Logs Insights queries
+- Protecting Terraform state and separating plan, apply, and teardown with a replacement guard
 - Weighing cost, operational risk, public exposure, and evidence requirements
 
 ## Author

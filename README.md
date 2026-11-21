@@ -22,7 +22,14 @@
 > CloudWatch. On the rebuilt, Terraform-created Windows instance, Windows Security
 > and Sysmon events were also observed in CloudWatch, including Sysmon Event IDs 1,
 > 3, 11, and 22. These samples verify the reported event paths, not saved-query
-> results or ongoing health.
+> results or ongoing health. Three controlled RDP failed-logon attempts were then
+> confirmed end to end: Windows Security Event ID 4625 arrived in CloudWatch at
+> 07:13:50, 07:14:00 and 07:14:08 UTC with source address 102.88.166.24.
+> This validates RDP ingress, the allow-list, Security-channel collection, the
+> CloudWatch Agent and XML delivery for the attempts. The same 4625 pipeline was
+> later validated through the `windows-rdp-brute-force` Logs Insights query:
+> the `>= 5` threshold returned two bins, 07:30 with 9 failures and 07:50 with
+> 8 failures, both from `102.88.166.24`.
 >
 > **This lab can cost money and expose hosts to the internet.** EC2, EBS, public
 > IPv4, log ingestion and storage, S3, alarms, data transfer, and optional
@@ -41,6 +48,8 @@
 - [Web honeypot runtime evidence](#web-honeypot-runtime-evidence)
 - [Windows heartbeat runtime evidence](#windows-heartbeat-runtime-evidence)
 - [Windows Security and Sysmon runtime evidence](#windows-security-and-sysmon-runtime-evidence)
+- [Windows failed RDP logon evidence](#windows-failed-rdp-logon-evidence)
+- [Windows ingress allow-list validation](#windows-ingress-allow-list-validation)
 - [Security design](#security-design)
 - [CI/CD](#cicd)
 - [Cost management](#cost-management)
@@ -354,6 +363,98 @@ host, and network identifiers are omitted.
 
 ![Sanitized Windows Sysmon event evidence summary](docs/deployment-evidence/windows-sysmon-events-redacted.png)
 
+### Windows ingress allow-list validation
+
+The Windows security group was inspected after configuring the RDP and SMB
+listener CIDRs. The AWS output reports both TCP 3389 and TCP 445 with
+`102.88.166.24/32` as the ingress source.
+
+This confirms that only the demonstrated source CIDR was present for each listener
+rule at the time of inspection. It also confirms that controlled connection attempts
+from `102.88.166.24/32` could reach the Windows host because the source had an
+explicit allow-list entry. It does not demonstrate which application responded, prove
+successful RDP or SMB authentication, or validate ingress behavior from other source
+addresses. The security-group identifier and command details are omitted from the
+sanitized evidence.
+
+![Redacted Windows security-group rules for TCP 3389 and 445](docs/deployment-evidence/windows-ingress-allow-list-redacted.png)
+
+### Windows failed RDP logon evidence
+
+Three controlled `mstsc` attempts generated Windows Security Event ID 4625
+(An account failed to log on). CloudWatch logs received the three events at
+07:13:50, 07:14:00 and 07:14:08 UTC. The XML event records identify the
+workstation `OLUDEMI24`, the failed account `fakeadmin`, logon type 3 (network),
+NTLM authentication and source network address `102.88.166.24`.
+
+Together with the confirmed TCP 3389 allow-list rule, this demonstrates the full
+sample path:
+
+`mstsc` attempt → TCP 3389 allow-list entry → Windows Security 4625 event →
+CloudWatch Agent → XML record in `/honeypot/dev/windows/security`.
+
+The evidence confirms failed-logon collection for these specific attempts. It does
+not prove successful RDP authentication or ongoing logon coverage. The saved RDP
+brute-force query does, however, require and apply a threshold of five failures
+from the same source within a five-minute window.
+
+The fixed XML regex was also validated directly in CloudWatch Logs Insights.
+It parsed `src_ip` from the single-quoted XML and returned one source
+(`102.88.166.24`; truncated visually in the table) in three five-minute bins:
+07:10, 07:20 and 07:30 UTC. The status reported `Showing 3 of 15 matched`,
+meaning three displayed source/bin rows represented 15 matched failed-logon
+records in the selected query range. This validates the source-IP parsing and
+five-minute aggregation even though the screenshot's table labels the IP column
+with an ellipsis.
+
+With the `filter failures >= 5` threshold enabled, the query was validated against
+223 scanned Security records. It returned exactly two rows: 07:30 UTC with 9
+failures and 07:50 UTC with 8 failures. Both rows are from
+`102.88.166.24`, which is shown in full in the chart legend. This confirms that
+XML parsing, source grouping and the five-failure threshold all work on real
+4625 events.
+
+**CloudWatch 4625 XML summary**
+
+![Redacted CloudWatch failed-RDP logon XML summary](docs/deployment-evidence/windows-rdp-4625-cloudwatch-redacted.png)
+
+**Failed account and source details**
+
+![Redacted 4625 account and network details](docs/deployment-evidence/windows-rdp-4625-details-redacted.png)
+
+**Windows event metadata and failure explanation**
+
+![Redacted 4625 event metadata and authentication details](docs/deployment-evidence/windows-rdp-4625-event-redacted.png)
+
+**CloudWatch Logs Insights source and time-bin aggregation**
+
+![Redacted CloudWatch Logs Insights showing three bins and 15 matched 4625 events](docs/deployment-evidence/windows-rdp-4625-logs-insights-redacted.png)
+
+**Validated `>= 5` brute-force threshold**
+
+![Redacted CloudWatch Logs Insights showing two RDP brute-force rows](docs/deployment-evidence/windows-rdp-brute-force-validated-redacted.png)
+
+### Windows account lifecycle test
+
+The supplied PowerShell/SSM transcript shows a controlled test account lifecycle:
+
+1. `net user honeytest "<test-password>" /add` created the local account.
+2. `net localgroup Administrators honeytest /add` added the account to the local
+   Administrators group.
+3. `net localgroup Administrators honeytest /delete` removed the account from the
+   Administrators group.
+4. `net user honeytest /delete` deleted the local account.
+
+The SSM invocation reported `Success` for all four commands, and the temporary
+parameter file `ssm-params.json` was deleted. The expected Windows Security event
+sequence is Event ID 4720 (user created), 4732 (member added to a security-enabled
+local group), 4733 (member removed from a security-enabled local group), and 4726
+(user deleted). This confirms the command execution on the test instance; it does
+not by itself confirm that all four Security events reached CloudWatch or that the
+Windows account-activity Logs Insights query produced matching results.
+
+![Sanitized PowerShell and SSM account lifecycle evidence](docs/deployment-evidence/windows-account-lifecycle-ssm-redacted.png)
+
 ## Security design
 
 ### Terraform remote state
@@ -415,6 +516,10 @@ Config off, no NAT Gateway or load balancer, and a 7-day CloudWatch retention.
 | One web POST appears in `/honeypot/dev/web/access` with the expected form fields, submission flag, and honeytoken | Confirms the event path for this request; the event contains field names, not submitted values |
 | Three healthy Windows heartbeat events appear in `/honeypot/dev/health/windows`, two from the scheduled task | Confirms the health task ran unattended and heartbeat delivery for these samples; not continuous health |
 | Windows Security and Sysmon events reached CloudWatch on the rebuilt Terraform-created instance; Sysmon Event IDs 1, 3, 11, and 22 were observed | Confirms delivery for the reported samples, including `write-health.ps1` process creation; not complete event coverage or saved-query results |
+| TCP 3389 and TCP 445 both show `102.88.166.24/32` in the Windows security-group output | Confirms the allow-list at inspection time and why test attempts could reach the host; not successful RDP/SMB authentication or negative CIDR testing |
+| The 4625 regex parsed `102.88.166.24` in three five-minute bins and reported `Showing 3 of 15 matched` | Confirms XML parsing and aggregation across 15 matched failed logons in 07:10, 07:20 and 07:30 UTC bins |
+| The `windows-rdp-brute-force` threshold returned exactly two rows: 07:30 with 9 failures and 07:50 with 8 failures | Confirms real-event parsing, grouping and the `>= 5` threshold for source `102.88.166.24`; not an alert or an ongoing-detection test |
+| An SSM account-lifecycle test created `honeytest`, added it to Administrators, removed it, and deleted it | Confirms all four `net` commands completed; Security Event IDs 4720, 4732, 4733, and 4726 should correspond to the lifecycle, but this is not a verified CloudWatch event record |
 | Repository contains nine saved Logs Insights query definitions | Query output has not been demonstrated by this evidence |
 | Windows telemetry is configured in Terraform and bootstrap files | Windows query results, broader event-channel coverage, and XML parsing across the configured channels still require validation |
 | Workflows contain OIDC and plan-provenance checks | External AWS IAM trust, GitHub environments, and account-specific cost/exposure are not verified here |
